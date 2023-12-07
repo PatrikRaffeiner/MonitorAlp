@@ -1,0 +1,51 @@
+TODO:
+
+- Testen der bisherigen Software als distribution (.exe)
+  + Herausfinden von bugs
+  + Verbesserungsmöglichkeiten zur Bedienung
+
+- "Remove Measurements"-button hinzufügen (+ Warnhinweis "are you sure?")
+
+- "Remove Project"-button hinzufügen (+Warnhinweis "are you sure?")
+
+- Warnhinweis bei schließen des Hintergrundfensters (Home Window), 
+  möglicher Datenverlust von ungespeicherten Daten
+
+- Handeln einer leeren Projektliste, crash bei klick in die leere liste
+  Anzeige "no recend projects"
+
+- Lizenzen verwalten
+
+- Anzeigen der euklidischen Distanzen zw. Referenz-Ursprung und Target
+  Für manuelle (Backup-) Messung
+
+- Forderes Fenster als aktives Fenster forcieren, blinken bei Eingabe in 
+  inaktivem Fenster
+
+- Hinzufügen von nicht-blockierenden popups nach hinzufügen von Messungen 
+  (initial, oder weiterführend), "successfully added measurement"
+
+- Nach hinzufügen einer Messung (Add Measurement) im "load-Fenster" den
+  Crash beheben
+
+- Tooltips einfügen, wo machen sie Sinn?
+
+- Überprüfe doppelte Projektnamen bei erstellen von neuen Projekten
+
+- Fenstergröße chekcen und anpassen (vor allem Home-Screen)
+
+- Bessere Darstellung bei Visualisierung, Einheiten, Namen der Marker, ...
+
+- Doppelklick als Eingabe ermöglichen  
+
+- Bei Distanz Angabe punkt und komma akzeptieren
+
+- Bei abbruch von RC (neue messung) crash
+  wegen Erstellung von neuem Ordner??
+
+- save RC path to  permanent file
+
+
+
+DONE: 
+

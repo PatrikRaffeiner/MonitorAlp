@@ -203,9 +203,15 @@ class GUI():
         select_lst = sg.Listbox(measurement_names, size=(35,10), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=True, key="-SELECT-")
         out_lst = sg.Listbox("", size=(25,10), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=False, key="-OUTPUT-")
 
-        layout = [[sg.Text("Measurements", font=("Arial Bold", 14)), sg.Push(),  sg.Text("Measurement Info", size=(21,1), font=("Arial Bold", 14))], 
+        layout = [[sg.Text("Measurements", font=("Arial Bold", 14)), 
+                   sg.Push(),  
+                   sg.Text("Measurement Info", size=(21,1), font=("Arial Bold", 14))], 
                   [select_lst, out_lst], 
-                  [Btn_10("Add Measurement", key="-ADD-"), sg.Push(), sg.Button("Calc Displacement", disabled=True, key="-CALC-")]]
+                  [Btn_10("Add Measurement", key="-ADD-"), 
+                   sg.Push(), 
+                   sg.Button("Calc Displacement", disabled=True, key="-CALC-"),
+                   sg.Push(), 
+                   sg.Button("Delete Measurement", disabled=True, key="-DEL-")]]
         
         overview_window = sg.Window(project.name + " Measurement Overview", layout)
 

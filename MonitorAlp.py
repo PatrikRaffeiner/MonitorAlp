@@ -34,12 +34,8 @@ while True:
         new_project = Project()
 
         # catch closed setup window and return to home
-        try:
-            new_project.setup()
-            print("Setup complete")
-        except:
-            continue
-        
+        #try:
+        new_project.setup()
         init_measurment = new_project.create_measurement()
 
         new_project.RC_registration_and_save_points(init_measurment)
@@ -53,6 +49,11 @@ while True:
         init_measurment.visualize_points()
         init_measurment.save()
         new_project.save()
+
+        #except:
+        #    continue
+        
+        
         
 
     # load project mode
@@ -64,7 +65,11 @@ while True:
                 break
         
             if project != None:
-                project.overview(project_list)
+                try:
+                    project.overview(project_list)
+
+                except:
+                    break
 
             
 

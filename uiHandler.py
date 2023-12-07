@@ -3,6 +3,55 @@ import PySimpleGUI as sg
 
 
 class UIhandler():
+    def handle_project_setup(self, project_setup_window):
+
+        # link buttons to events
+        proceed = project_setup_window["Continue"]
+        
+        # initiate listener flags with "low"
+        loc_flag = False
+        exe_flag = False
+        licence_flag = False
+
+
+        # event loop project setup input
+        while True:
+            event, values = project_setup_window.read()
+            # end if window is closed or cancel is pressed
+            if event == "Cancel" or event == sg.WIN_CLOSED:
+                project_setup_window.close()
+                break
+            
+            # event listener for project name/location
+            if event == "-LOC-":
+                location = values["-LOC-"]
+                loc_flag = True
+
+            # event listener for RC execution path
+            if event == "-EXE-":
+                RC_path = values["-EXE-"]
+                exe_flag = True
+
+            # event listener for permanent licence checkbox
+            if event == "-CHECK-":
+                licence_flag = values["-CHECK-"]
+
+            # enable "Continue" button when project name/location and RC execution path is entered
+            if loc_flag and exe_flag:
+                proceed.update(disabled = False)
+
+            # continue when project name and RC exe is defined and store attributes 
+            if event == "Continue":
+                project_setup_window.close()
+
+                name = location
+
+                # set project members from UI
+                return location, RC_path, licence_flag, name
+
+
+
+
     def get_img_and_pjct_dir(self, measurement_setup_window):
     
         accept = measurement_setup_window['Accept']
@@ -33,6 +82,8 @@ class UIhandler():
 
             if event == "Accept":
                 measurement_setup_window.close()
+                print(imgfolder)
+                print(pjctfolder)
                 
                 return imgfolder, pjctfolder
             
@@ -184,6 +235,7 @@ class UIhandler():
     def handle_measurement_overview(self, overview_window, select_lst, project, project_list):
         
         calc_btn = overview_window["-CALC-"]
+        remove_btn = overview_window["-DEL-"]
 
         while True:
             event, values = overview_window.read()
@@ -213,9 +265,14 @@ class UIhandler():
                 # enable diaplacement calculation button when selected measurement is not initial measurement 
                 if selected_measurement != project.measurement_list[0]:
                     calc_btn.update(disabled = False)
+                    remove_btn.update(disabled = True)
+
+                    # continue here...
+                    # was passiert wenn initiale messung gelöscht wird? 
                 
                 else: 
                     calc_btn.update(disabled = True)
+                    
 
 
             if event == "-ADD-":
@@ -238,6 +295,13 @@ class UIhandler():
             if event == "-CALC-":
                 project.calc_displacement(selected_measurement)
                 project.visualize_displacement(selected_measurement)
+
+
+            if event == "-DEL":
+                # TODO: add warning and prompt
+                # if prompt: ....
+                project.remove_from_project_list(selected_measurement)
+
 
 
 

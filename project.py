@@ -21,57 +21,17 @@ class Project():
         # creates and returns project setup window
         project_setup_window = self.Gui.make_project_setup_win()
 
-        # link buttons to events
-        proceed = project_setup_window["Continue"]
-        
-        # initiate listener flags with "low"
-        loc_flag = False
-        exe_flag = False
-        licence_flag = False
-
-
-        # event loop project setup input
-        while True:
-            event, values = project_setup_window.read()
-            # end if window is closed or cancel is pressed
-            if event == "Cancel" or event == sg.WIN_CLOSED:
-                project_setup_window.close()
-                break
-            
-            # event listener for project name/location
-            if event == "-LOC-":
-                location = values["-LOC-"]
-                loc_flag = True
-
-            # event listener for RC execution path
-            if event == "-EXE-":
-                RC_path = values["-EXE-"]
-                exe_flag = True
-
-            # event listener for permanent licence checkbox
-            if event == "-CHECK-":
-                licence_flag = values["-CHECK-"]
-
-            # enable "Continue" button when project name/location and RC execution path is entered
-            if loc_flag and exe_flag:
-                proceed.update(disabled = False)
-
-            # continue when project name and RC exe is defined and store attributes 
-            if event == "Continue":
-                project_setup_window.close()
-
-                # set project members from UI
-                self.location = location
-                self.RC_path = RC_path
-                self.permanent_licence_active = licence_flag
-                self.name = self.location
-
+        # set project members from UI
+        self.location, self.RC_path, self.permanent_licence_active, self.name = self.UiHandler.handle_project_setup(project_setup_window)
 
 
 
     def create_measurement(self):
         measurement_setup_window = self.Gui.make_measurement_setup_win()
         imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window)
+        print(f"image directory: \n {imgs_dir}")
+        print(f"project directory: \n {self.dir}")
+
 
         # TODO: differentiate between licence path and pin (maybe if pin.type == integer, achtung none)
         if self.permanent_licence_active == False:
@@ -129,6 +89,12 @@ class Project():
 
     def add_to_measurement_list(self, m):
         self.measurement_list.append(m)
+
+
+
+
+    def remove_from_measurement_list(self, m):
+        self.measurement_list.remove(m)
 
 
 
