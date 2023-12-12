@@ -48,8 +48,6 @@ class ProjectList(list):
             with open(cls.permanent_file, "rb") as f:
                 # list of previous projects
                 file = pickle.load(f)
-                print("Project list loaded successfully")
-                print(f"Number of elements in list: {len(file)}")
                 return file
 
 

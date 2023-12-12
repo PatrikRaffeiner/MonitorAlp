@@ -258,20 +258,29 @@ class GUI():
 
     def make_project_list_window(self, project_names):      
 
-        recent_projects = sg.Listbox(project_names, size=(40,10), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=True, key="-SELECT-")
+        recent_projects = sg.Listbox(project_names, size=(40,10), font=("Arial Bold", 14), 
+                                     expand_y=True, expand_x=True, enable_events=True, 
+                                     key="-SELECT-")
 
         layout = [[sg.Text("Recent Projects")],
                   [recent_projects],
                   [Btn_10("Load",  key="-LOAD-", disabled=True), sg.Push()]]
                 
-        load_win = sg.Window("Load Recent Projects", layout)
+        load_win = sg.Window("Load Recent Projects", layout, finalize=True)
+
+        # Add the ability to double-click an element
+        load_win["-SELECT-"].bind('<Double-Button-1>' , "+-double click-")
 
         return load_win, recent_projects
 
         
 
         
-
+    def popup(self, message):
+        sg.theme('DarkGrey')
+        layout = [[sg.Text(message)]]
+        window = sg.Window('Message', layout, no_titlebar=True, keep_on_top=True, finalize=True)
+        return window
 
 
 

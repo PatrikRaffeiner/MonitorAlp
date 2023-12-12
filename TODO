@@ -36,16 +36,25 @@ TODO:
 
 - Bessere Darstellung bei Visualisierung, Einheiten, Namen der Marker, ...
 
-- Doppelklick als Eingabe ermöglichen  
+- Bei Distanz Angabe Punkt und Komma akzeptieren
 
-- Bei Distanz Angabe punkt und komma akzeptieren
+- Bei Abbruch von RC (neue messung) 
+  crash wegen Erstellung von neuem Ordner??
 
-- Bei abbruch von RC (neue messung) crash
-  wegen Erstellung von neuem Ordner??
+- RC-Pfad zu permanentem File hinzufügen und nach Initiierung abfragen 
+  (bei Erstellung von neuen Projekten keine Angabe von RC-Pfad mehr nötig)
 
-- save RC path to  permanent file
+- Ordnerstruktur checken, images, measurement, projekt
+
+- DE und EN version, dropDown Menü
+
+- add open in RC button to measurement menu
 
 
 
 DONE: 
+- Doppelklick als Eingabe ermöglichen
+
+- Überprüfen von Bildern in img-Folder (vorhandensein von Bildern)
+  (crash bei Angabe von "Bilderlosem" Ordner, Unterordner) 
 

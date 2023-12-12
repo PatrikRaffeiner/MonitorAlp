@@ -28,7 +28,7 @@ class Project():
 
     def create_measurement(self):
         measurement_setup_window = self.Gui.make_measurement_setup_win()
-        imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window)
+        imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui)
         print(f"image directory: \n {imgs_dir}")
         print(f"project directory: \n {self.dir}")
 
@@ -62,6 +62,7 @@ class Project():
     def RC_registration_and_save_points(self, measurement):
         # path to save control points (measurement points)
         measurement.controlPoint_path = measurement.dir + "/controlPoints.csv"
+        print(measurement.controlPoint_path)
 
         # definition of reference (marker) system
         origin = measurement.ref_origin_name
@@ -77,10 +78,11 @@ class Project():
         result = subprocess.run(
             [self.RC_path, 
             "-addFolder", measurement.img_path, 
-            "-align", "-detectMarkers", 
+            "-detectMarkers", 
             "-defineDistance", origin, refMarkerX, measurement.ref_distance, 
             "-defineDistance", origin, refMarkerZ, measurement.ref_distance,
-            "-update", "-exportGroundControlPoints", measurement.controlPoint_path,
+            "-align", 
+            "-exportGroundControlPoints", measurement.controlPoint_path,
             "-save", save_path,
             "-quit"])
 

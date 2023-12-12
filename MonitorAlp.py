@@ -34,25 +34,25 @@ while True:
         new_project = Project()
 
         # catch closed setup window and return to home
-        #try:
-        new_project.setup()
-        init_measurment = new_project.create_measurement()
+        try:
+            new_project.setup()
+            init_measurment = new_project.create_measurement()
 
-        new_project.RC_registration_and_save_points(init_measurment)
-        init_measurment.transform_points()
-        init_measurment.sort_points()
-        new_project.add_to_measurement_list(init_measurment)
+            new_project.RC_registration_and_save_points(init_measurment)
+            init_measurment.transform_points()
+            init_measurment.sort_points()
+            new_project.add_to_measurement_list(init_measurment)
 
-        project_list.append(new_project)
-        project_list.save()
+            project_list.append(new_project)
+            project_list.save()
 
-        init_measurment.visualize_points()
-        init_measurment.save()
-        new_project.save()
+            init_measurment.visualize_points()
+            init_measurment.save()
+            new_project.save()
 
-        #except:
-        #    continue
-        
+        except Exception as ex:
+            print("Error during measurement processing:", ex)
+            continue
         
         
 
@@ -71,7 +71,6 @@ while True:
                 except:
                     break
 
-            
 
 
 home_win.close()

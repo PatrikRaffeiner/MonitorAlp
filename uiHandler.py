@@ -1,4 +1,7 @@
 import PySimpleGUI as sg
+import os
+import threading
+from time import sleep 
 
 
 
@@ -52,7 +55,7 @@ class UIhandler():
 
 
 
-    def get_img_and_pjct_dir(self, measurement_setup_window):
+    def get_img_and_pjct_dir(self, measurement_setup_window, gui):
     
         accept = measurement_setup_window['Accept']
 
@@ -71,7 +74,17 @@ class UIhandler():
             
             if event == "-IMGFOLDER-":
                 imgfolder = values["-IMGFOLDER-"]
-                image_flag = True
+                
+                if self.inspect_img_folder(imgfolder):
+                    measurement_setup_window["-IMGFOLDER-"].update(background_color="white")
+                    image_flag = True
+                
+                else:
+                    measurement_setup_window["-IMGFOLDER-"].update(background_color="red")
+                    popup_win = gui.popup("Folder does not contain any images or supported images")
+                    measurement_setup_window.force_focus()
+                    threading.Thread(target=wait, args=(4, popup_win), daemon=True).start()
+                    image_flag = False
 
             if event == "-PRJFOLDER-":
                 pjctfolder = values["-PRJFOLDER-"]
@@ -81,12 +94,23 @@ class UIhandler():
                 accept.update(disabled =False)
 
             if event == "Accept":
-                measurement_setup_window.close()
-                print(imgfolder)
-                print(pjctfolder)
-                
+                measurement_setup_window.close()                
                 return imgfolder, pjctfolder
             
+
+
+
+    def inspect_img_folder(self, folder_dir):
+        file_list = os.listdir(folder_dir)
+        extensions = [".JPG", ".jpg", ".jpeg", ".png", ".tif",
+                      ".exr", ".webp", ".bmp", ".dng", ".raw"]
+        for file in file_list:
+            if file.endswith(tuple(extensions)):
+                return True
+        
+        return False
+                
+
 
 
     def get_licence_pin(self, licence_browse_window):
@@ -126,6 +150,7 @@ class UIhandler():
                 licence_browse_window.close()
                 return pin
             
+
 
 
     def get_marker_names(self, marker_input_window):
@@ -212,7 +237,7 @@ class UIhandler():
         while True:
             event, values = load_window.read()
 
-                   # End if window is closed
+            # End if window is closed
             if event == sg.WIN_CLOSED:
                 load_window.close()
                 return False
@@ -229,7 +254,15 @@ class UIhandler():
                 selected_project = next((p for p in project_list if p.name == project_name), None)
                 load_window.close()
                 return selected_project
-                 
+            
+            if event == "-SELECT-+-double click-":
+                # find project in project list based on double clicked element 
+                project_name = values["-SELECT-"][0]
+                selected_project = next((p for p in project_list if p.name == project_name), None)
+                load_window.close()
+                return selected_project
+
+                
 
 
     def handle_measurement_overview(self, overview_window, select_lst, project, project_list):
@@ -304,7 +337,13 @@ class UIhandler():
 
 
 
-
-
+# timer to sleep for passed time
+def wait(time, popup_win):
+    current_time = 0 
+    while current_time <= time:
+        sleep(1)
+        current_time += 1
+    popup_win.close()
+    return 
 
 
