@@ -2,7 +2,8 @@ import PySimpleGUI as sg
 import os
 import threading
 from time import sleep 
-
+import re
+from gui import *
 
 
 class UIhandler():
@@ -33,7 +34,8 @@ class UIhandler():
             # event listener for RC execution path
             if event == "-EXE-":
                 RC_path = values["-EXE-"]
-                exe_flag = True
+
+                exe_flag = self.handle_execution_input(RC_path, project_setup_window)  
 
             # event listener for permanent licence checkbox
             if event == "-CHECK-":
@@ -51,6 +53,34 @@ class UIhandler():
 
                 # set project members from UI
                 return location, RC_path, licence_flag, name
+
+
+
+
+    def handle_execution_input(self, RC_path, project_setup_window):
+        tip_wrong_exe = "Incorrect path. Please find the path to your RealityCapture installation and select RealytyCapture.exe "
+        
+        # correct path to RealityCapture execution
+        if RC_path.endswith("RealityCapture.exe"):
+            exe_flag = True
+            # highlight input line 
+            project_setup_window["-EXE-"].update(background_color="white")
+
+            # update tooltip with warning and correct format suggestion
+            project_setup_window["-EXE-"].TooltipObject.text = ""
+
+            return exe_flag
+
+        else:
+            exe_flag = False
+        
+            # highlight input line 
+            project_setup_window["-EXE-"].update(background_color="red")
+
+            # update tooltip with warning and correct format suggestion
+            project_setup_window["-EXE-"].TooltipObject.text = tip_wrong_exe
+
+            return exe_flag
 
 
 
@@ -100,9 +130,43 @@ class UIhandler():
 
 
 
+    def get_img_dir(self, measurement_setup_window, gui):
+        print("in get_img_dir")
+    
+        accept = measurement_setup_window['Accept']
+
+        # event loop measurement setup
+        while True:
+            event, values = measurement_setup_window.read()
+            # End if window is closed
+            if event == "Cancel" or event == sg.WIN_CLOSED:
+                measurement_setup_window.close()
+                break
+            
+            if event == "-IMGFOLDER-":
+                imgfolder = values["-IMGFOLDER-"]
+                
+                if self.inspect_img_folder(imgfolder):
+                    measurement_setup_window["-IMGFOLDER-"].update(background_color="white")
+                    accept.update(disabled =False)                   
+                
+                else:
+                    measurement_setup_window["-IMGFOLDER-"].update(background_color="red")
+                    popup_win = gui.popup("Folder does not contain any images or supported images")
+                    measurement_setup_window.force_focus()
+                    threading.Thread(target=wait, args=(4, popup_win), daemon=True).start()
+
+
+            if event == "Accept":
+                measurement_setup_window.close()                
+                return imgfolder
+            
+
+
+
     def inspect_img_folder(self, folder_dir):
         file_list = os.listdir(folder_dir)
-        extensions = [".JPG", ".jpg", ".jpeg", ".png", ".tif",
+        extensions = [".JPG", ".jpg", ".jpeg", ".png", ".tiff", ".tif",
                       ".exr", ".webp", ".bmp", ".dng", ".raw"]
         for file in file_list:
             if file.endswith(tuple(extensions)):
@@ -153,9 +217,9 @@ class UIhandler():
 
 
 
-    def get_marker_names(self, marker_input_window):
+    def get_marker_names(self, gui, marker_input_window, target_list):
 
-        okay = marker_input_window["OK"]
+        okay = marker_input_window["Continue"]
 
         # set listener flags to low
         # reference system/markers
@@ -163,13 +227,9 @@ class UIhandler():
         horiz_falg = False
         vert_flag = False
 
-        targetA_flag = False
-        targetB_flag = False
-        targetC_flag = False
 
-        targetA = None
-        targetB = None 
-        targetC = None
+        # reference distance 
+        distance_flag = False
 
 
         # event loop marker input
@@ -193,42 +253,84 @@ class UIhandler():
                 vertical_marker = values["-VERT-"]
                 vert_flag = True
 
-            # target marker
-            if event == "-A-":
-                targetA = values["-A-"]
-                targetA_flag = True
+            # add additional target marker
+            if event == "-ADD-":
+                marker_input_window.metadata += 1
+                marker_input_window.extend_layout(marker_input_window['-TARGET SECTION-'], [gui.marker_row(target_list,marker_input_window.metadata)])
+                
+                # add empty elements to edit via input
+                target_list.flags.append(None)
+                target_list.labels.append(None)
 
-            if event == "-B-":
-                targetB = values["-B-"]
-                targetB_flag = True
+            # listener for every target marker, including added targets
+            if event[0] == "-TARGET-":
+                for i in range(len(target_list.flags)):
+                    if event[1] == i:
+                        
+                        target_list.labels[i] = values[("-TARGET-", i)]
+                        target_list.flags[i] = True
 
-            if event == "-C-":
-                targetC = values["-C-"]
-                targetC_flag = True
 
-            # get user input on refence distance, otherwise take default
+            # get user input on refence distance
             if event == "-DIST-":
-                ref_distance = values["-DIST-"]
+                distance_flag, ref_distance = self.inspect_distance_input(values["-DIST-"], marker_input_window)
 
-
-
-            if orig_flag and horiz_falg and vert_flag and targetA_flag:
+            if orig_flag and horiz_falg and vert_flag and distance_flag and not any(label is None for label in target_list.flags):
                 okay.update(disabled =False)
+            else:
+                okay.update(disabled=True)
 
-            if event == "OK":
+            if event == "Continue":
                 marker_input_window.close()
-                targets = []
-                for target in [targetA, targetB, targetC]:
-                    if target is not None: 
-                        targets.append(target)
-
-                ref_distance = float(ref_distance)
-                ref_distance /= 1000                # transform into meters
-                ref_distance = str(ref_distance)    # transform to string 
-                    
-                return [origin_marker, horizontal_marker, vertical_marker], targets, ref_distance
+                                    
+                return [origin_marker, horizontal_marker, vertical_marker], target_list.labels, ref_distance
 
 
+
+
+    def inspect_distance_input(self, input, marker_input_window):
+
+        def divide_string(string):
+            # divide input string by 1000 (turn mm-string to m-string)
+            ref_distance = float(string)
+            ref_distance /= 1000        # transform into meters
+            return str(ref_distance)    # transform to string
+        
+
+        # transform possible dot-input to comma-input 
+        comma_input = input.replace(".",",")
+
+
+        # check for correct input
+        match = re.match("^[0-9]{3},[0-9]$", comma_input)
+
+        # correct input format 
+        if match:
+            # clear the input line and set distance flag
+            marker_input_window["-DIST-"].update(background_color="white")
+
+            # clear tooltip
+            marker_input_window["-DIST-"].TooltipObject.text = ""
+
+            distance_flag = True
+
+            dot_input = input.replace(",",".")
+
+            return distance_flag, divide_string(dot_input)
+        
+
+        else:
+            # highlight input line 
+            marker_input_window["-DIST-"].update(background_color="red")
+
+            # update tooltip with warning and correct format suggestion
+            marker_input_window["-DIST-"].TooltipObject.text = "Incorrect format, must be xxx.x"
+
+            distance_flag = False
+
+            return distance_flag, None
+        
+        
 
 
     def select_from_project_list(self, load_window, recent_projects, project_list):
@@ -269,10 +371,12 @@ class UIhandler():
         
         calc_btn = overview_window["-CALC-"]
         remove_btn = overview_window["-DEL-"]
+        # duplicate_btn = overview_window["-DUPL-"]   # remove this line
+
+        tooltip_del = "Cannot delete initial measurement"
 
         while True:
             event, values = overview_window.read()
-            #print(values)
             
             # End if window is closed
             if event == sg.WIN_CLOSED:
@@ -298,25 +402,27 @@ class UIhandler():
                 # enable diaplacement calculation button when selected measurement is not initial measurement 
                 if selected_measurement != project.measurement_list[0]:
                     calc_btn.update(disabled = False)
-                    remove_btn.update(disabled = True)
+                    remove_btn.update(disabled = False)
+                    # duplicate_btn.update(disabled = False) # remove this line
+                    overview_window["-DEL-"].TooltipObject.text = "Removes selected measurement irreversibly"
 
-                    # continue here...
-                    # was passiert wenn initiale messung gelöscht wird? 
                 
                 else: 
                     calc_btn.update(disabled = True)
-                    
+                    remove_btn.update(disabled = True)
+                    overview_window["-DEL-"].TooltipObject.text = tooltip_del
+
 
 
             if event == "-ADD-":
-                new_measurement = project.create_measurement()
-                project.RC_registration_and_save_points(new_measurement)
-                new_measurement.transform_points()
-                new_measurement.sort_points()
-                project.add_to_measurement_list(new_measurement)
+                measurement = project.create_measurement(init_status=False)
+                project.RC_registration_and_save_points(measurement)
+                measurement.transform_points()
+                measurement.sort_points()
+                project.add_to_measurement_list(measurement)
 
-                new_measurement.visualize_points()
-                new_measurement.save()
+                measurement.visualize_points()
+                measurement.save()
                 project.save()
                 #project_list.append(project)
                 project_list.save()
@@ -327,13 +433,54 @@ class UIhandler():
 
             if event == "-CALC-":
                 project.calc_displacement(selected_measurement)
+                project.calc_distance_to_origin(selected_measurement)
                 project.visualize_displacement(selected_measurement)
+                
 
 
-            if event == "-DEL":
-                # TODO: add warning and prompt
-                # if prompt: ....
-                project.remove_from_project_list(selected_measurement)
+            if event == "-DEL-":
+                # make popup window to check for validity
+                warn_window = GUI.make_warning_window("Are you sure you? This will delete the measurement irreversibly!")
+
+                while True:
+                    event, values = warn_window.read()
+            
+                    # End if window is closed
+                    if event == sg.WIN_CLOSED:
+                        warn_window.close()
+                        break
+
+                    if event == "Acknowledge":
+                        selected_measurement.delete_directory()
+                        project.remove_from_measurement_list(selected_measurement)
+
+                        measurement_names = project.get_measurement_names()
+                        overview_window["-SELECT-"].update(measurement_names)
+
+                        project.save()
+                        project_list.save()
+
+                        warn_window.close()
+
+                    if event == "Cancel":
+                        warn_window.close()
+                        
+
+            # uncomment to handle input of duplicate button 
+            # if event == "-DUPL-":
+            #     project.add_to_measurement_list(selected_measurement)
+            #     project.save()
+            #     project_list.save()
+
+            #     measurement_names = project.get_measurement_names()
+            #     overview_window["-SELECT-"].update(measurement_names)
+                
+
+
+
+
+
+
 
 
 

@@ -4,39 +4,25 @@ TODO:
   + Herausfinden von bugs
   + Verbesserungsmöglichkeiten zur Bedienung
 
-- "Remove Measurements"-button hinzufügen (+ Warnhinweis "are you sure?")
-
-- "Remove Project"-button hinzufügen (+Warnhinweis "are you sure?")
+- "Remove Project"-button hinzufügen (+ Warnhinweis "are you sure?")
 
 - Warnhinweis bei schließen des Hintergrundfensters (Home Window), 
   möglicher Datenverlust von ungespeicherten Daten
 
-- Handeln einer leeren Projektliste, crash bei klick in die leere liste
-  Anzeige "no recend projects"
-
 - Lizenzen verwalten
-
-- Anzeigen der euklidischen Distanzen zw. Referenz-Ursprung und Target
-  Für manuelle (Backup-) Messung
-
-- Forderes Fenster als aktives Fenster forcieren, blinken bei Eingabe in 
-  inaktivem Fenster
 
 - Hinzufügen von nicht-blockierenden popups nach hinzufügen von Messungen 
   (initial, oder weiterführend), "successfully added measurement"
-
-- Nach hinzufügen einer Messung (Add Measurement) im "load-Fenster" den
-  Crash beheben
 
 - Tooltips einfügen, wo machen sie Sinn?
 
 - Überprüfe doppelte Projektnamen bei erstellen von neuen Projekten
 
-- Fenstergröße chekcen und anpassen (vor allem Home-Screen)
+- Überprüfe doppelte Messungsnamen bei hinzufügen von Messungen
+
+- Fenstergröße checken und anpassen (vor allem Home-Screen)
 
 - Bessere Darstellung bei Visualisierung, Einheiten, Namen der Marker, ...
-
-- Bei Distanz Angabe Punkt und Komma akzeptieren
 
 - Bei Abbruch von RC (neue messung) 
   crash wegen Erstellung von neuem Ordner??
@@ -44,11 +30,32 @@ TODO:
 - RC-Pfad zu permanentem File hinzufügen und nach Initiierung abfragen 
   (bei Erstellung von neuen Projekten keine Angabe von RC-Pfad mehr nötig)
 
-- Ordnerstruktur checken, images, measurement, projekt
-
 - DE und EN version, dropDown Menü
 
-- add open in RC button to measurement menu
+- add "open in RC" button to measurement menu
+
+- messergebisse als excel ausgeben
+
+- Bessere Benennung (user freundlicher) der spalten in calc displacement
+
+- verschiebungen bei übertreten von zulässigen werten rot färben, was sind zulässige werte??
+
+- bearbeiten von messungen (name, datum, zeit...) ermöglichen
+
+- Button Funktion verwenden 
+
+- default ref. distanz??
+
+- marker namen input überprüfen 
+
+- remove target marker button
+
+- clear and remove button in project load win
+
+- hinweis auf ungenauigkeit einfügen (haftungsausschluss)
+
+- remove duplicate button in measurement list 
+
 
 
 
@@ -58,3 +65,26 @@ DONE:
 - Überprüfen von Bildern in img-Folder (vorhandensein von Bildern)
   (crash bei Angabe von "Bilderlosem" Ordner, Unterordner) 
 
+- Ordnerstruktur checken, images, measurement, projekt
+
+- Nach hinzufügen einer Messung (Add Measurement) im "load-Fenster" den
+  Crash beheben
+
+- Bei Distanz Angabe Punkt und Komma akzeptieren
+
+- Überprüfen der RC execution (RealityCapture.exe)
+
+- Variable Anzahl von target markern (add marker button hinzufügen)
+
+- disable continue when added target marker
+
+- Handeln einer leeren Projektliste, crash bei klick in die leere liste
+  Anzeige "no recend projects"
+
+- "Remove Measurements"-button hinzufügen (+ Warnhinweis "are you sure?")
+
+- Vorderes Fenster als aktives Fenster forcieren, blinken bei Eingabe in 
+  inaktivem Fenster
+
+- Anzeigen der euklidischen Distanzen zw. Referenz-Ursprung und Target
+  Für manuelle (Backup-) Messung

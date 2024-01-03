@@ -3,6 +3,8 @@ from datetime import date, datetime
 import pickle
 import matplotlib.pyplot as plt
 import copy
+import shutil
+
 
 # local imports
 from helpers import *
@@ -11,7 +13,7 @@ from helpers import *
 
 class Measurement():
     def __init__(self, location, ref_marker_names, target_marker_names, 
-                 ref_dist, img_path, project):
+                 ref_dist, orig_img_path, project):
         
         self.date = date.today().strftime("%d/%m/%Y")
         self.time = datetime.now().strftime("%H:%M:%S")
@@ -19,17 +21,17 @@ class Measurement():
         self.ref_marker_names = ref_marker_names
         self.target_marker_names = target_marker_names
         self.ref_distance = ref_dist
-        self.img_path = img_path
-
+        
 
         # reference system names
         self.ref_origin_name = self.ref_marker_names[0]
         self.ref_X_name = self.ref_marker_names[1]
         self.ref_Z_name =  self.ref_marker_names[2]
-        #self.coordinates  = None
+
 
         self.create_name(project)
         self.create_dir(project)
+        self.copy_imgs(orig_img_path)
 
 
 
@@ -61,8 +63,16 @@ class Measurement():
 
 
     def create_dir(self, project):
-        self.dir = os.path.join(project.dir, self.name)
+        # self.dir = os.path.join(project.dir, self.name)
+        self.dir = project.dir + "/" + self.name
         os.mkdir(self.dir)
+
+
+
+
+    def copy_imgs(self, orig_path):
+        self.img_path = self.dir + "/imgs"
+        shutil.copytree(orig_path, self.img_path)
 
 
 
@@ -213,10 +223,10 @@ class Measurement():
             with open(save_dir, "wb") as f:
                 pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as ex:
-            print("Error during pickling object (Possibly unsupported):", ex)
-
-
+            print("Error during saving measurement, pickling object (Possibly unsupported):", ex)
 
 
     
 
+    def delete_directory(self):
+        shutil.rmtree(self.dir)

@@ -1,5 +1,5 @@
-from gui import *
 import subprocess
+from adjustText import adjust_text
 
 # local imports 
 from measurement import *
@@ -11,6 +11,7 @@ class Project():
         self.Gui = GUI()
         self.UiHandler = UIhandler()
         self.measurement_list = []
+        self.target_list = self.TargetList()
 
 
     # function to initialize project variables via user input:
@@ -26,11 +27,28 @@ class Project():
 
 
 
-    def create_measurement(self):
-        measurement_setup_window = self.Gui.make_measurement_setup_win()
-        imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui)
-        print(f"image directory: \n {imgs_dir}")
-        print(f"project directory: \n {self.dir}")
+    def create_measurement(self, init_status):
+
+        # check for additional or initial measurement
+        if init_status:
+            print("init measurement")
+            measurement_setup_window = self.Gui.make_init_measurement_setup_win()
+            imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui)
+
+            marker_input_window = self.Gui.make_marker_input_window(self.target_list)
+            reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
+            
+
+        else: # additional measurement
+            print("additional measurement")
+            measurement_setup_window = self.Gui.make_measurement_setup_win()
+            imgs_dir = self.UiHandler.get_img_dir(measurement_setup_window, self.Gui)
+
+            reference_list = self.measurement_list[0].ref_marker_names
+            target_list = self.measurement_list[0].target_marker_names
+            ref_dist = self.measurement_list[0].ref_distance
+        
+        print(ref_dist)
 
 
         # TODO: differentiate between licence path and pin (maybe if pin.type == integer, achtung none)
@@ -39,17 +57,6 @@ class Project():
             licence_browse_window = self.Gui.make_licence_browse_win()
             licence_pin = self.UiHandler.get_licence_pin(licence_browse_window)
 
-        # differentiate between additional (known marker names) and 
-        # initial (unknown marker names) measurement
-        try:
-            # attributes of initial measurement
-            reference_list = self.measurement_list[0].ref_marker_names
-            target_list = self.measurement_list[0].target_marker_names
-            ref_dist = self.measurement_list[0].ref_distance
-        
-        except:
-            marker_input_window = self.Gui.make_marker_input_window()
-            reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(marker_input_window)
 
         new_measurement = Measurement(self.location, reference_list, target_list,
                                        ref_dist, imgs_dir, self)
@@ -78,10 +85,11 @@ class Project():
         result = subprocess.run(
             [self.RC_path, 
             "-addFolder", measurement.img_path, 
+            "-align", 
             "-detectMarkers", 
             "-defineDistance", origin, refMarkerX, measurement.ref_distance, 
             "-defineDistance", origin, refMarkerZ, measurement.ref_distance,
-            "-align", 
+            "-update",
             "-exportGroundControlPoints", measurement.controlPoint_path,
             "-save", save_path,
             "-quit"])
@@ -101,7 +109,10 @@ class Project():
 
 
 
-    def visualize_points(self, init_points, origin, current_points = None):
+    def visualize_points(self, init_points, ref_points, current_points = None):
+        # get coordinate system origin
+        origin = ref_points[0]
+        
         # axis length for vizualization
         ax_len = 0.2
         
@@ -111,20 +122,19 @@ class Project():
         cp3 = [0, 0, -ax_len]
 
         # initial point coordinates
-        xi_i = []
-        yi_i = []
-        zi_i = []
+        x_i = []
+        y_i = []
+        z_i = []
 
 
         for point in init_points: 
-            xi_i.append(point.x)
-            yi_i.append(point.y)
-            zi_i.append(point.z)
+            x_i.append(point.x)
+            y_i.append(point.y)
+            z_i.append(point.z)
             #print(f"name: {point.name}, x: {point.x}, y: {point.y}, z: {point.z}")
 
-        # create figure
-        fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
+        # create figure 
+        ax = plt.figure().add_subplot(projection='3d')
 
         # plot coordinate system
         ax.plot([origin.x,ax_len], [origin.y,0], [origin.z,0], "red")
@@ -132,29 +142,51 @@ class Project():
         ax.plot([origin.x,0], [origin.y,0], [origin.z,-ax_len], "blue")
 
         # plot coordinate points
+        ax.scatter(0, 0, 0, c="black")
         ax.scatter(cp1[0], cp1[1], cp1[2], c="red")
         ax.scatter(cp2[0], cp2[1], cp2[2], c="green")
         ax.scatter(cp3[0], cp3[1], cp3[2], c="blue")
 
+        # plot initial points
+        init_scatter = ax.scatter(x_i, y_i, z_i, c="brown", marker='o', label="initial measurement")
 
-        # plot initial control points
-        ax.scatter(xi_i, yi_i, zi_i, c="red", marker='o')
+        # labeling and orientation of points 
+        target_labels = [init_points[i].name for i in range(len(x_i))]
+        zdirs = [None, None, None]
+
+        # add labels to init points
+        for x, y, z, label, zdir in zip(x_i, y_i, z_i, target_labels, zdirs):
+            ax.text(x, y, z+0.01, label, zdir, color="brown")
+
+        # add labels to coordinate points
+        ax.text(origin.x, origin.y, origin.z+0.01, ref_points[0].name, zdir, color="black")
+        ax.text(cp1[0], cp1[1], cp1[2]+0.01, "x, "+ref_points[1].name, zdir, color="red")
+        ax.text(cp2[0], cp2[1], cp2[2]+0.01, "y", zdir, color="green")
+        ax.text(cp3[0], cp3[1], cp3[2]+0.01, "z, "+ref_points[2].name, zdir, color="blue")
+
 
 
         if current_points != None:
             # current point coordinates
-            xi_c = []
-            yi_c = []
-            zi_c = []
+            x_c = []
+            y_c = []
+            z_c = []
 
             for point in current_points: 
-                xi_c.append(point.x)
-                yi_c.append(point.y)
-                zi_c.append(point.z)
+                x_c.append(point.x)
+                y_c.append(point.y)
+                z_c.append(point.z)
 
-            # plot current control points
-            ax.scatter(xi_c, yi_c, zi_c, c = "blue", marker=".")
+            # plot current points
+            current_scatter = ax.scatter(x_c, y_c, z_c, c = "orange", marker="o", label="current measurement")
 
+            # add labels to current points
+            for x, y, z, label, zdir in zip(x_c, y_c, z_c, target_labels, zdirs):
+                ax.text(x, y, z-0.02, label, zdir, color="orange")
+        
+
+        # add legend of initial and current points via labeled scatter plots
+        ax.legend()
         
         # equal axis for better visual representarion
         set_axes_equal(ax)
@@ -200,18 +232,32 @@ class Project():
             dz = subseq_target.z - init_target.z
 
             subseq_target.set_displacement(dx, dy, dz)
+            
+        self.calc_distance_to_origin(subseq_measurement)
 
         self.Gui.show_displacement(init_targets, subseq_targets)
 
-    
 
+
+
+    def calc_distance_to_origin(self, subseq_measurement):
+        # calculate the absolute distance between every target and the origin
+        origin = self.measurement_list[0].ref_points[0]
+        subseq_targets = subseq_measurement.target_points
+
+        for target in subseq_targets:
+            dist = np.linalg.norm(target.get_pos())
+            target.set_distance_from_origin(dist)
+
+
+    
 
     def visualize_displacement(self, measurement):
 
         init_measurement = self.measurement_list[0]
-        origin = self.measurement_list[0].ref_points[0]
+        ref_points = self.measurement_list[0].ref_points
 
-        self.visualize_points(init_measurement.target_points, origin, measurement.target_points)
+        self.visualize_points(init_measurement.target_points, ref_points, measurement.target_points)
 
         
 
@@ -228,5 +274,19 @@ class Project():
 
 
 
+    class TargetList(list):
+        def __init__(self):
+            char = "A"
+            self.init_char = ord(char [0])
+            
+            # initialize target list with one element (flag+label)
+            self.flags = [None]
+            self.labels = [None]
 
+        
+        def make_current_marker_text(self, target_num):
+            char = self.init_char + target_num
+            text = "Target marker " + chr(char)
+
+            return text    
 

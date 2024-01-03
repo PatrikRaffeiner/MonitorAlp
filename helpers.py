@@ -26,6 +26,10 @@ class ControlPoint:
     def set_displacement(self, dx, dy, dz):
         self.displacement = [dx, dy, dz]
 
+    
+    def set_distance_from_origin(self, distance_from_origin):
+        self.distance_from_origin = distance_from_origin
+
 
 
 def set_axes_equal(ax):

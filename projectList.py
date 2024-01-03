@@ -61,13 +61,17 @@ class ProjectList(list):
         uiHandler = UIhandler()
 
         project_names = self.get_names()
-        load_window, recent_projects = gui.make_project_list_window(project_names)
+        if len(project_names) == 0:
+            popup_win = gui.popup("No recent projects existent")
+            threading.Thread(target=wait, args=(3, popup_win), daemon=True).start()
 
-        selected_project = uiHandler.select_from_project_list(load_window, recent_projects, self)
+            return False
 
+        else: 
+            load_window, recent_projects = gui.make_project_list_window(project_names)
+            selected_project = uiHandler.select_from_project_list(load_window, recent_projects, self)
 
-
-        return selected_project
+            return selected_project
 
 
 

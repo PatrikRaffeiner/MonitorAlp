@@ -14,6 +14,9 @@ from projectList import *
 # --------------------------------------------------------------------------------------------------------#
 
 
+# setting global theme
+GUI.def_theme("Gray Gray Gray")
+
 # initialize home window
 home_win = GUI.make_start_layout()
 
@@ -25,6 +28,7 @@ project_list = ProjectList.loader()
 # event loop
 while True:
     event, values = home_win.read()
+
     # end if window is closed
     if event == sg.WIN_CLOSED:
         break
@@ -36,7 +40,7 @@ while True:
         # catch closed setup window and return to home
         try:
             new_project.setup()
-            init_measurment = new_project.create_measurement()
+            init_measurment = new_project.create_measurement(init_status=True)
 
             new_project.RC_registration_and_save_points(init_measurment)
             init_measurment.transform_points()
@@ -61,16 +65,25 @@ while True:
         while True:
             project = project_list.select_project()
 
+            # case is no recent project is in project list
+            # popup is handeled in line above (select_project) 
             if project == False: 
                 break
         
             if project != None:
-                try:
+                #try:
                     project.overview(project_list)
 
-                except:
-                    break
+                #except Exception as ex:
+                #    print("Error during loading:", ex)
+                #    break
 
+    # handle language selection
+    if values["-LANG-"] == "DE":
+        print("set to german")
+
+    else:
+        print("set to english")
 
 
 home_win.close()
