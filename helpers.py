@@ -1,35 +1,7 @@
-import numpy as np
-import csv 
+import csv
+from abc import ABC, abstractmethod
 
-
-
-
-# simple class for controlPoint handling
-class ControlPoint: 
-    def __init__(self, name, x, y, z):
-        self.name = name
-        self.x = float(x)
-        self.y = float(y)
-        self.z = float(z)
-        self.pos = np.array([self.x, self.y, self.z])
-
-    def set_pos(self, pos_):
-        self.pos = pos_
-        self.x = pos_[0]
-        self.y = pos_[1]
-        self.z = pos_[2]
-    
-    def get_pos(self):
-        return np.array([self.x, self.y, self.z])
-    
-
-    def set_displacement(self, dx, dy, dz):
-        self.displacement = [dx, dy, dz]
-
-    
-    def set_distance_from_origin(self, distance_from_origin):
-        self.distance_from_origin = distance_from_origin
-
+from controlPoint import *
 
 
 def set_axes_equal(ax):
@@ -80,4 +52,47 @@ def read_csv(controlPoint_path):
     return points
 
 
+
+class TextReadOut(ABC):
+    # abstract class to serve as super class for language handling 
+    def __init__(self):
+        self.dictionary = { # ID : [EN  ,  DE]
+                            1 : ["Hello", "Hallo"],
+                            2 : ["World", "Welt"], 
+                            "hm_txt_title" : ["Monitoring Tool for Alpine Infrastructure", "Monitoring Tool für Alpine Infrastruktur"], 
+                            "hm_btn_start" : ["Start New Project", "Neues Projekt Starten"],
+                            "hm_btn_load" : ["Load Project", "Projekt Laden"], 
+                            "setup_tip_exe" : ["Please find the path to your Reality Capture installation/execution (RealityCapture.exe)", "Bitte den Pfad zur Reality Capture Ausführungsdatei (RealityCapture.exe) angeben"],
+                            "setup_txt_name" : ["Project Name / Location Name", "Projektname / Klettersteigname"],
+                            "" : ["", ""],
+                            "" : ["", ""],
+                            "" : ["", ""],
+                            "" : ["", ""],
+                            "" : ["", ""],
+                            "" : ["", ""],
+                            "" : ["", ""],
+                            "" : ["", ""],}
+
+
+    @abstractmethod
+    def gettext(self, textID):
+        pass
+
+
+class enTextReadOut(TextReadOut):
+    # child class for english language readout
+    def gettext(self, textID):
+        return self.dictionary[textID][0]
+
+
+class deTextReadOut(TextReadOut):
+    # child class for german language readout
+    def gettext(self, textID):
+        return self.dictionary[textID][1]
+
+
+# global variable/class
+readout = enTextReadOut()
+print(f"initial readout {readout}")
+print("in helpers")
 

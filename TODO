@@ -25,7 +25,7 @@ TODO:
 - Bessere Darstellung bei Visualisierung, Einheiten, Namen der Marker, ...
 
 - Bei Abbruch von RC (neue messung) 
-  crash wegen Erstellung von neuem Ordner??
+  crash wegen Erstellung von neuem/vorhandenen Ordner??
 
 - RC-Pfad zu permanentem File hinzufügen und nach Initiierung abfragen 
   (bei Erstellung von neuen Projekten keine Angabe von RC-Pfad mehr nötig)

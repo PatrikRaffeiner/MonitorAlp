@@ -4,10 +4,11 @@ import pickle
 import matplotlib.pyplot as plt
 import copy
 import shutil
+import numpy as np
 
 
 # local imports
-from helpers import *
+from helpers import read_csv, set_axes_equal
 
 
 

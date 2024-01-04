@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import PySimpleGUI as sg 
 import numpy as np
 
+from helpers import *
+
 
 
 class GUI():
@@ -20,10 +22,10 @@ class GUI():
     def make_start_layout(self):
         # creates home window
         layout_start = [
-            [sg.Text("Monitoring Tool for Alpine Infrastructure", font=("Arial", 26), text_color="black"), 
+            [sg.Text(readout.gettext("hm_txt_title"), font=("Arial", 26), key="-TITLE-", text_color="black"), 
              sg.Push(), sg.Drop(["DE", "EN"], enable_events= True, key="-LANG-", default_value="EN")], 
             [sg.Image("home_img.png")],
-            [sg.Button("Start New Project"), sg.Push(), sg.Button("Load Project")]]
+            [sg.Button(readout.gettext("hm_btn_start"), key="-START-"), sg.Push(), sg.Button(readout.gettext("hm_btn_load"), key="-LOAD-")]]
 
         start_win = sg.Window("MonitorAlp", layout_start, resizable=True)
 
@@ -36,11 +38,13 @@ class GUI():
         # creates project setup window
 
         # tooltips
-        tip_exe = "Please find the path to your Reality Capture installation/execution (RealityCapture.exe)"
+        tip_exe = readout.gettext("setup_tip_exe")
+
+        print(f"used readout: {readout}")
         
         # column layouts
         project_location_col = [
-            [sg.Text("Project Location / Location Name"),
+            [sg.Text(readout.gettext("setup_txt_name")),
             sg.In(size=(25,1), default_text="z.B. Klettersteig Ilmspitz", enable_events= True, key="-LOC-")]] 
         
         RC_path_col = [

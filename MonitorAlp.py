@@ -1,12 +1,11 @@
 import PySimpleGUI as sg
 
 # local imports
-from helpers import *
+
 from project import *
 from projectList import *
-
-
-
+#from helpers import *
+import helpers
 
 
 # --------------------------------------------------------------------------------------------------------#
@@ -23,6 +22,9 @@ home_win = GUI.make_start_layout()
 # classmethod loads recent projects from permanent file
 project_list = ProjectList.loader()
 
+# global variable/class
+print(f"initial readout {readout}")
+print("in main")
 
 
 # event loop
@@ -34,7 +36,7 @@ while True:
         break
         
     # initial measurement mode
-    if event == "Start New Project":
+    if event == "-START-":
         new_project = Project()
 
         # catch closed setup window and return to home
@@ -61,7 +63,7 @@ while True:
         
 
     # load project mode
-    if event == "Load Project":
+    if event == "-LOAD-":
         while True:
             project = project_list.select_project()
 
@@ -71,19 +73,38 @@ while True:
                 break
         
             if project != None:
-                #try:
+                try:
                     project.overview(project_list)
 
-                #except Exception as ex:
-                #    print("Error during loading:", ex)
-                #    break
+                except Exception as ex:
+                    print("Error during loading:", ex)
+                    break
 
-    # handle language selection
+    # handle global language selection
     if values["-LANG-"] == "DE":
-        print("set to german")
+        # global 
+        del helpers.readout
+        helpers.readout = deTextReadOut()
+        print(f"german readout {readout}")
+        
+        #local (current window)
+        home_win["-TITLE-"].update(readout.gettext("hm_txt_title"))
+        home_win["-START-"].update(readout.gettext("hm_btn_start"))
+        home_win["-LOAD-"].update(readout.gettext("hm_btn_load"))
+
+
 
     else:
-        print("set to english")
+        # global
+        del readout
+        readout = enTextReadOut()
+        print(f"english readout {readout}")
+        
+        #local (current window)
+        home_win["-TITLE-"].update(readout.gettext("hm_txt_title"))
+        home_win["-START-"].update(readout.gettext("hm_btn_start"))
+        home_win["-LOAD-"].update(readout.gettext("hm_btn_load"))
+
 
 
 home_win.close()
