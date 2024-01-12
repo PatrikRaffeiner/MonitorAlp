@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 import PySimpleGUI as sg 
 import numpy as np
 
-from helpers import *
+import helpers
 
 
 
 class GUI():
+
 
     @classmethod
     def def_theme(cls, theme):
@@ -19,15 +20,18 @@ class GUI():
 
 
     @classmethod
-    def make_start_layout(self):
+    def make_start_window(self):
         # creates home window
-        layout_start = [
-            [sg.Text(readout.gettext("hm_txt_title"), font=("Arial", 26), key="-TITLE-", text_color="black"), 
-             sg.Push(), sg.Drop(["DE", "EN"], enable_events= True, key="-LANG-", default_value="EN")], 
-            [sg.Image("home_img.png")],
-            [sg.Button(readout.gettext("hm_btn_start"), key="-START-"), sg.Push(), sg.Button(readout.gettext("hm_btn_load"), key="-LOAD-")]]
 
-        start_win = sg.Window("MonitorAlp", layout_start, resizable=True)
+        
+
+        layout_start = [
+            [sg.Text(getText("hm_txt_title"), font=("Arial", 26), key="-TITLE-", text_color="black"), 
+             sg.Push(), sg.Drop(["DE", "EN"], enable_events= True, key="-LANG-", default_value="DE")], 
+            [sg.Image("home_img.png")],
+            [sg.Button(getText("hm_btn_start"), key="-START-"), sg.Push(), sg.Button(getText("hm_btn_load"), key="-LOAD-")]]
+
+        start_win = sg.Window("MonitorAlp", layout_start, resizable=True, finalize=True)
 
         return start_win
     
@@ -38,40 +42,39 @@ class GUI():
         # creates project setup window
 
         # tooltips
-        tip_exe = readout.gettext("setup_tip_exe")
+        tip_exe = getText("setup_tip_exe")
 
-        print(f"used readout: {readout}")
         
         # column layouts
         project_location_col = [
-            [sg.Text(readout.gettext("setup_txt_name")),
+            [sg.Text(getText("setup_txt_name")),
             sg.In(size=(25,1), default_text="z.B. Klettersteig Ilmspitz", enable_events= True, key="-LOC-")]] 
         
         RC_path_col = [
             [sg.Text("RealityCapture exe"),
             sg.In(size=(25,1), enable_events= True, key="-EXE-", tooltip=tip_exe),
-            sg.FileBrowse()]] 
+            sg.FileBrowse(getText("browse_btn"))]] 
         
         licence_checkbox_col = [
-            [sg.Text("Licence already installed"),
-            sg.Checkbox("Existing Licence", enable_events= True, key="-CHECK-", default=False)]]
+            [sg.Checkbox(getText("setup_cbx_licence"), enable_events= True, key="-CHECK-", default=False)]]
         
         
         # create project setup layout
         layout_project_setup = [ 
-            [sg.Text("Please enter the name of the via ferrata or the location where the measurement was conducted")],
+            [sg.Text(getText("pjct_txt_name"))],
             [sg.Column(project_location_col)],
-            [sg.Text("Please find the installation execution of your RealityCapture software")],
+            [sg.Text(getText("pjct_txt_RC"))],
             [sg.Column(RC_path_col)],
             [sg.HSeparator()],
-            [sg.Text("Please check the box if your Reality Capture licence is already installed")],
+            [sg.Text(getText("pjct_cbx_licence"))],
             [sg.Column(licence_checkbox_col)],
-            [sg.Button("Continue",disabled=True), sg.Button("Cancel")],
+            [sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True), 
+             sg.Button(getText("cancel_btn"), key="-CANCEL-")],
             ]
 
         
         # create setup input window
-        project_setup_window = sg.Window("Project Setup", layout_project_setup)
+        project_setup_window = sg.Window(getText("setup_win_title"), layout_project_setup)
 
 
         return project_setup_window
@@ -82,17 +85,17 @@ class GUI():
 
     def make_init_measurement_setup_win(self):
         # creates measurement setup window for initial measurement
-        imgs_tooltip = "Please find the location of your image folder"
-        project_tooltip = "Please find the location where you want to save the project"
+        imgs_tooltip = getText("init_tip_imgs")
+        project_tooltip = getText("init_tip_proj")
 
 
         image_path = [
-            [sg.Text("Image Folder"),
+            [sg.Text(getText("init_txt_img")),
             sg.In(size=(25,1), enable_events= True, key="-IMGFOLDER-", tooltip=imgs_tooltip),
             sg.FolderBrowse()]] 
         
         project_path = [
-            [sg.Text("Project Folder"),
+            [sg.Text(getText("init_txt_proj")),
             sg.In(size=(25,1), enable_events= True, key="-PRJFOLDER-", tooltip=project_tooltip),
             sg.FolderBrowse()]] 
 
@@ -100,11 +103,11 @@ class GUI():
         layout_browse_folder = [
             [sg.Column(project_path)],
             [sg.Column(image_path)],
-            [sg.Button("Accept", disabled=True), sg.Button("Cancel")]]
+            [sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True), sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
  
 
         # create measurement setup window
-        measurement_setup_window = sg.Window("Measurement Setup", layout_browse_folder)
+        measurement_setup_window = sg.Window(getText("init_win_title"), layout_browse_folder)
 
         return measurement_setup_window
     
@@ -114,11 +117,11 @@ class GUI():
 
     def make_measurement_setup_win(self):
         # creates measurement setup window for additional measurement
-        imgs_tooltip = "Please find the location of your image folder"
+        imgs_tooltip = getText("init_tip_imgs")
 
 
         image_path = [
-            [sg.Text("Image Folder"),
+            [sg.Text(getText("init_txt_img")),
             sg.In(size=(25,1), enable_events= True, key="-IMGFOLDER-", tooltip=imgs_tooltip),
             sg.FolderBrowse()]] 
         
@@ -126,11 +129,12 @@ class GUI():
         # create layout for measurement setup GUI
         layout_browse_folder = [
             [sg.Column(image_path)],
-            [sg.Button("Accept", disabled=True), sg.Button("Cancel")]]
+            [sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True), 
+             sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
  
 
         # create measurement setup window
-        measurement_setup_window = sg.Window("Measurement Setup", layout_browse_folder)
+        measurement_setup_window = sg.Window(getText("init_win_title"), layout_browse_folder)
 
         return measurement_setup_window
     
@@ -141,34 +145,34 @@ class GUI():
     def make_licence_browse_win(self):
         # 
         input_path = [
-            [sg.Text("Licence File"),
+            [sg.Text(getText("lic_txt_file")),
             sg.In(size=(25,1), enable_events= True, key="-FILE-"),
             sg.FileBrowse()]] 
 
         input_PIN = [
-            [sg.Text("Insert PIN"),
-            sg.In(size=(25,1), enable_events= True, key="-PIN-")]] 
+            [sg.Text(getText("lic_txt_pin")),
+            sg.In(size=(25,1), enable_events= True, key="-PIN_INPUT-")]] 
 
         licence_checkbox = [
             [sg.Checkbox("", enable_events= True, key="-CHECK-", default=False),
-            sg.Text("Licence already installed"),
-            sg.Button("Continue", disabled=True)]]
+            sg.Text(getText("setup_cbx_licence")),
+            sg.Button(getText("continue_btn"), disabled=True)]]
 
 
         # set up licence browse GUI
         layout_browse_licence = [
-            [sg.Text("Please find an existing licence or insert PIN to buy a licence for your images")],
+            [sg.Text(getText("lic_text_desc"))],
             [sg.Column(licence_checkbox)],
             [sg.HSeparator()],
             [sg.Column(input_path)],
-            [sg.Button("Accept",disabled=True), sg.Button("Cancel")], 
+            [sg.Button(getText("continue_btn"), disabled=True, key="-CONTINUE-"), sg.Button(getText("cancel_btn"))], 
             [sg.HSeparator()],
             [sg.Column(input_PIN)],
-            [sg.Button("Pay",disabled=True), sg.Button("Cancel")]]
+            [sg.Button(getText("lic_txt_pay"),disabled=True, key="-PAY_BTN-"), sg.Button(getText("cancel_btn"))]]
 
 
         # create licece browse window
-        licence_browse_window = sg.Window("Browse Licence", layout_browse_licence)
+        licence_browse_window = sg.Window(getText("lic_win_title"), layout_browse_licence)
         
         return licence_browse_window
 
@@ -178,46 +182,46 @@ class GUI():
     
     def make_marker_input_window(self, target_list):
         # tooltips
-        tip_dist = "Please provide the reference distance in the format: xxx.x"
+        tip_dist = getText("mrk_tip_dist")
 
         # reference coordinate/marker system
         origin_name_layout = [
-            [sg.Text("Origin-marker name"),
+            [sg.Text(getText("mrk_txt_orig")),
             sg.In(size=(25,1), default_text="z.B. 1x12:01a", enable_events= True, key="-ORIG-")]] 
         
         horiz_name_layout = [
-            [sg.Text("Horizontal-marker name"),
+            [sg.Text(getText("mrk_txt_hrz")),
             sg.In(size=(25,1), default_text="z.B. 1x12:01b", enable_events= True, key="-HORIZ-")]] 
         
         vert_name_layout = [
-            [sg.Text("Vertical-marker name"),
+            [sg.Text(getText("mrk_txt_vtk")),
             sg.In(size=(25,1), default_text="z.B. 1x12:01c", enable_events= True, key="-VERT-")]]
 
         ref_dist_layout = [
-            [sg.Text("Marker Distance in Millimeter"),
-            sg.In(size=(25,1), default_text="120.0", enable_events= True, tooltip=tip_dist, key="-DIST-")]]  
+            [sg.Text(getText("mrk_txt_dist")),
+            sg.In(size=(25,1), default_text="z.B. 120.0", enable_events= True, tooltip=tip_dist, key="-DIST-")]]  
         
 
         # set up marker input layout
         layout_marker_input = [
-            [sg.Text("Please enter the name of the origin reference marker")],
+            [sg.Text(getText("mrk_txt_descO"))],
             [sg.Column(origin_name_layout)],
             [sg.HSeparator()],
-            [sg.Text("Please enter the name of the horizontal reference marker")],
+            [sg.Text(getText("mrk_txt_descV"))],
             [sg.Column(horiz_name_layout)],
             [sg.HSeparator()],
-            [sg.Text("Please enter the name of the vertical reference marker")],
+            [sg.Text(getText("mrk_txt_descH"))],
             [sg.Column(vert_name_layout)],
             [sg.HSeparator()],
-            [sg.Text("Please enter the distance between the reference points in mm")],
+            [sg.Text(getText("mrk_txt_descD"))],
             [sg.Column(ref_dist_layout)],
             [sg.HSeparator()],
             [sg.HSeparator()],
             [sg.Col([self.marker_row(target_list, 0)], key="-TARGET SECTION-")],
-            [sg.Button("Add Target Marker", key="-ADD-"), sg.Push(), sg.Button("Continue", disabled=True)]]
+            [sg.Button(getText("mrk_btn_add"), key="-ADD-"), sg.Push(), sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True)]]
         
         # create marker input window
-        marker_input_window = sg.Window("Reference And Target Marker", layout_marker_input, metadata=0)
+        marker_input_window = sg.Window(getText("mrk_win_title"), layout_marker_input, metadata=0)
         
         return marker_input_window
 
@@ -226,18 +230,11 @@ class GUI():
 
 
     def marker_row(self,target_list, target_num):
-            text = target_list.make_current_marker_text(target_num)
+            curr_char = target_list.make_current_marker_character(target_num)
 
-            print(f"from marker row: {target_num}")
+            text = getText("mrk_txt") + curr_char
 
-            if target_num == 0:
-                instruction_text = "Please enter the name of the 1st target marker"
-            elif target_num == 1:
-                instruction_text = "Please enter the name of the 2nd target marker"
-            elif target_num == 2:
-                instruction_text = "Please enter the name of the 3rd target marker"
-            else:
-                instruction_text = "Please enter the name of the " + str(target_num) + "th target marker"
+            instruction_text = getText("mrk_txt_pre") + str(target_num+1) + getText("mrk_txt_post")
 
             marker_input_row = [sg.pin(sg.Col([
                     [sg.Text(instruction_text)],
@@ -255,21 +252,21 @@ class GUI():
         select_lst = sg.Listbox(measurement_names, size=(35,10), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=True, key="-SELECT-")
         out_lst = sg.Listbox("", size=(25,10), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=False, key="-OUTPUT-")
 
-        tooltip_del = "Please select a measurement to delete"
+        tooltip_del = getText("meas_tip_del") 
 
-        layout = [[sg.Text("Measurements", font=("Arial Bold", 14)), 
+        layout = [[sg.Text(getText("meas_txt_meas") , font=("Arial Bold", 14)), 
                    sg.Push(),  
-                   sg.Text("Measurement Info", size=(21,1), font=("Arial Bold", 14))], 
+                   sg.Text(getText("meas_txt_measInfo") , size=(21,1), font=("Arial Bold", 14))], 
                   [select_lst, out_lst], 
-                  [Btn_10("Add Measurement", key="-ADD-"), 
+                  [Btn_10(getText("meas_btn_add"), key="-ADD-"), 
                    sg.Push(), 
-                   sg.Button("Calc Displacement", disabled=True, key="-CALC-"),
+                   sg.Button(getText("meas_btn_calc"), disabled=True, key="-CALC-"),
                    sg.Push(), 
                    #sg.Button("Duplicate Measurement", disabled=True, key="-DUPL-", button_color=("black","OliveDrab3")), # remove this line
                    #sg.Push(),                                                       # remove this line
-                   sg.Button("Delete Measurement", button_color=("white","firebrick3"), disabled=True, key="-DEL-", tooltip=tooltip_del)]]
+                   sg.Button(getText("meas_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL-", tooltip=tooltip_del)]]
         
-        overview_window = sg.Window(project.name + " Measurement Overview", layout)
+        overview_window = sg.Window(project.name + getText("meas_win_title"), layout)
 
         return overview_window, select_lst
 
@@ -281,22 +278,22 @@ class GUI():
         name_size = 10
         di_size = 9
 
-        layout = [[Txt_10("Target name", size=(name_size,1)), 
+        layout = [[Txt_10(getText("disp_txt_trgt"), size=(name_size,1)), 
                    Txt_10("dx (mm)", size=(di_size,1)), 
                    Txt_10("dy (mm)", size=(di_size,1)), 
                    Txt_10("dz (mm)", size=(di_size,1)), 
                    Txt_10("abs (mm)", size=(di_size,1)),
-                   Txt_10("distance to origin (mm)", size=(di_size*2,1))]]
+                   Txt_10(getText("disp_txt_dist"), size=(di_size*2,1))]]
         
         for init_target, subseq_target in zip(init_targets, subseq_targets):
             
             abs_dist = np.linalg.norm(subseq_target.pos-init_target.pos)
 
-            dx = "{:.3f}".format(1000*subseq_target.displacement[0])
-            dy = "{:.3f}".format(1000*subseq_target.displacement[1])
-            dz = "{:.3f}".format(1000*subseq_target.displacement[2])
-            abs_dist = "{:.3f}".format(1000*abs_dist)
-            dist_to_orig = "{:.3f}".format(1000*subseq_target.distance_from_origin)
+            dx = "{:.2f}".format(1000*subseq_target.displacement[0])
+            dy = "{:.2f}".format(1000*subseq_target.displacement[1])
+            dz = "{:.2f}".format(1000*subseq_target.displacement[2])
+            abs_dist = "{:.2f}".format(1000*abs_dist)
+            dist_to_orig = "{:.2f}".format(1000*subseq_target.distance_from_origin)
 
             layout.append([Txt_10(subseq_target.name,size=(name_size,1)), 
                            Txt_10(dx, size=(di_size,1)), 
@@ -305,7 +302,7 @@ class GUI():
                            Txt_10(abs_dist, size=(di_size,1)), 
                            Txt_10(dist_to_orig, size=(di_size,1))])
         
-        displacement_winow = sg.Window("Displacements", layout)
+        displacement_winow = sg.Window(getText("disp_win_title"), layout)
 
 
         while True:
@@ -326,18 +323,57 @@ class GUI():
                                      expand_y=True, expand_x=True, enable_events=True, 
                                      key="-SELECT-")
 
-        layout = [[sg.Text("Recent Projects")],
+        layout = [[sg.Text(getText("pjlist_txt_pjcts"))],
                   [recent_projects],
-                  [Btn_10("Load",  key="-LOAD-", disabled=True), sg.Push()]]
+                  [sg.Button(getText("pjlist_btn_load"), key="-LOAD-", disabled=True), 
+                   sg.Push(), 
+                   sg.Button(getText("pjlist_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL-")]]
                 
-        load_win = sg.Window("Load Recent Projects", layout, finalize=True)
+        load_win = sg.Window(getText("pjlist_win_title"), layout, finalize=True)
 
         # Add the ability to double-click an element
         load_win["-SELECT-"].bind('<Double-Button-1>' , "+-double click-")
 
         return load_win, recent_projects
 
+
+
+    @classmethod
+    def make_delete_warning(cls, related, not_related):
+        # change window layout
+        sg.theme("DarkRed1")
+
+        related_str = ""
+        not_related_str = ""
+
+        for file_folder in related:
+            related_str = related_str + "-  " + str(file_folder) + "\n"
+
+        for file_folder in not_related:
+            not_related_str = not_related_str + "-  " + str(file_folder) + "\n"
+
+
+        text_str = getText("pjct_txt_warnremove") + "\n" + related_str + not_related_str
         
+
+        warning_layout = [
+            [sg.Text(getText("pjct_txt_warnremove"), font=("Helvetica", 12), text_color="black")],
+            [sg.Text(related_str, font=("Helvetica", 12, "bold"), text_color="black")],
+            [sg.Text(not_related_str, font=("Helvetica", 12), text_color="black")],
+            [sg.Button(getText("pjct_btn_rmvall"), key="-RMVALL-"), 
+             sg.Push(), 
+             sg.Button(getText("pjct_btn_rmvhigh"), key="-RMHIGH-"), 
+             sg.Push(), 
+             sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
+        
+        warn_window = sg.Window(getText("warn_btn"), warning_layout, keep_on_top=True, finalize=True)
+
+        # change theme back to original for subsequent windows
+        sg.theme(cls.theme)
+
+        return warn_window
+
+
 
 
     @classmethod
@@ -348,9 +384,9 @@ class GUI():
 
         warning_layout = [
             [sg.Text(warning_str, font=("Arial", 22), text_color="black")],
-            [sg.Button("Acknowledge"), sg.Push(), sg.Button("Cancel")]]
+            [sg.Button(getText("acknowl_btn"), key="-ACKNOWLEDGE-"), sg.Push(), sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
         
-        warn_window = sg.Window("Warning!", warning_layout, keep_on_top=True, finalize=True)
+        warn_window = sg.Window(getText("warn_btn"), warning_layout, keep_on_top=True, finalize=True)
 
         # change theme back to original for subsequent windows
         sg.theme(cls.theme)
@@ -360,10 +396,15 @@ class GUI():
 
 
     @classmethod    
-    def popup(cls, message):
+    def popup(cls, ID, location):
+
+        p1 = location[0]
+        p2 = location[1] - 100
+        location = (p1, p2)
         sg.theme('DarkRed1')
-        layout = [[sg.Text(message)]]
-        pop_window = sg.Window('Message', layout, no_titlebar=True, keep_on_top=True, finalize=True)
+        pop_window = sg.popup_non_blocking(getText(ID), no_titlebar=True, 
+                                           auto_close=True, location=location,
+                                           auto_close_duration=4.5)
         sg.theme(cls.theme)
         return pop_window
 
@@ -381,3 +422,7 @@ def Btn_10(*args, button_color=('white', 'black'), **kwargs):
 
 def Txt_10(*args, **kwargs):
     return(sg.Text(*args, font=("Arial Bold", 10), **kwargs))
+
+
+def getText(ID):
+        return helpers.readout.gettext(ID)

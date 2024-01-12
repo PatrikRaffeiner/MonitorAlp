@@ -9,10 +9,10 @@ from gui import *
 
 
 class UIhandler():
-    def handle_project_setup(self, project_setup_window):
+    def handle_project_setup(self, project_setup_window, project_list):
 
         # link buttons to events
-        proceed = project_setup_window["Continue"]
+        proceed = project_setup_window["-CONTINUE-"]
         
         # initiate listener flags with "low"
         loc_flag = False
@@ -24,14 +24,23 @@ class UIhandler():
         while True:
             event, values = project_setup_window.read()
             # end if window is closed or cancel is pressed
-            if event == "Cancel" or event == sg.WIN_CLOSED:
+            if event == "-CANCEL-" or event == sg.WIN_CLOSED:
                 project_setup_window.close()
                 break
             
             # event listener for project name/location
             if event == "-LOC-":
                 location = values["-LOC-"]
-                loc_flag = True
+
+                if self.inspect_project_name(location, project_list):
+                    loc_flag =  False
+                    self.dye_background("red", project_setup_window["-LOC-"])
+                    self.create_popup_above("setup_tip_wrongName", project_setup_window, "-LOC-")
+
+                else: 
+                    loc_flag = True
+                    self.dye_background("white", project_setup_window["-LOC-"])
+
 
             # event listener for RC execution path
             if event == "-EXE-":
@@ -46,9 +55,12 @@ class UIhandler():
             # enable "Continue" button when project name/location and RC execution path is entered
             if loc_flag and exe_flag:
                 proceed.update(disabled = False)
+            
+            else:
+                proceed.update(disabled = True)
 
             # continue when project name and RC exe is defined and store attributes 
-            if event == "Continue":
+            if event == "-CONTINUE-":
                 project_setup_window.close()
 
                 name = location
@@ -59,8 +71,19 @@ class UIhandler():
 
 
 
+    def inspect_project_name(self, current_name, project_list):
+        for project in project_list:
+            if project.name == current_name:
+                return True
+            
+        return False
+
+
+
+
+
     def handle_execution_input(self, RC_path, project_setup_window):
-        tip_wrong_exe = "Incorrect path. Please find the path to your RealityCapture installation and select RealytyCapture.exe "
+        tip_wrong_exe = getText("pjct_tip_wrongRC")
         
         # correct path to RealityCapture execution
         if RC_path.endswith("RealityCapture.exe"):
@@ -87,9 +110,9 @@ class UIhandler():
 
 
 
-    def get_img_and_pjct_dir(self, measurement_setup_window, gui):
+    def get_img_and_pjct_dir(self, measurement_setup_window, gui, project_name):
     
-        accept = measurement_setup_window['Accept']
+        accept = measurement_setup_window["-CONTINUE-"]
 
         # set listener flags to low
         project_flag = False
@@ -100,7 +123,7 @@ class UIhandler():
         while True:
             event, values = measurement_setup_window.read()
             # End if window is closed
-            if event == "Cancel" or event == sg.WIN_CLOSED:
+            if event == "-CANCEL-" or event == sg.WIN_CLOSED:
                 measurement_setup_window.close()
                 break
             
@@ -112,20 +135,41 @@ class UIhandler():
                     image_flag = True
                 
                 else:
-                    measurement_setup_window["-IMGFOLDER-"].update(background_color="red")
-                    popup_win = gui.popup("Folder does not contain any images or supported images")
+                    self.dye_background("red", measurement_setup_window["-IMGFOLDER-"])
+                    self.create_popup_above("init_pop_img", measurement_setup_window, "-IMGFOLDER-")
+                    '''measurement_setup_window["-IMGFOLD, ER-"].update(background_color="red")
+                    loc = measurement_setup_window.CurrentLocation()
+                    gui.popup("init_pop_img", loc)
                     measurement_setup_window.force_focus()
-                    threading.Thread(target=wait, args=(4, popup_win), daemon=True).start()
+                    measurement_setup_window["-IMGFOLDER-"].SetFocus()'''
+                    #threading.Thread(target=wait, args=(4, popup_win), daemon=True).start()
                     image_flag = False
 
             if event == "-PRJFOLDER-":
                 pjctfolder = values["-PRJFOLDER-"]
-                project_flag = True
+
+                if self.inspect_project_folder(pjctfolder, project_name):
+                    measurement_setup_window["-PRJFOLDER-"].update(background_color="white")
+                    project_flag = True
+
+                # handle existing project name in provided project folder 
+                else:
+                    project_flag = False
+                    
+                    # dye input line background red
+                    measurement_setup_window["-PRJFOLDER-"].update(background_color="red")
+                    
+                    # create non-blocking pop up window with explanation
+                    loc = measurement_setup_window.CurrentLocation()
+                    gui.popup("init_pop_projcet", loc)
+                    measurement_setup_window.force_focus()
+                    measurement_setup_window["-IMGFOLDER-"].SetFocus()
+
             
             if image_flag and project_flag:
                 accept.update(disabled =False)
 
-            if event == "Accept":
+            if event == "-CONTINUE-":
                 measurement_setup_window.close()                
                 return imgfolder, pjctfolder
             
@@ -133,15 +177,15 @@ class UIhandler():
 
 
     def get_img_dir(self, measurement_setup_window, gui):
-        print("in get_img_dir")
     
-        accept = measurement_setup_window['Accept']
+        accept = measurement_setup_window["-CONTINUE-"]
+
 
         # event loop measurement setup
         while True:
             event, values = measurement_setup_window.read()
             # End if window is closed
-            if event == "Cancel" or event == sg.WIN_CLOSED:
+            if event == "-CANCEL-" or event == sg.WIN_CLOSED:
                 measurement_setup_window.close()
                 break
             
@@ -154,12 +198,14 @@ class UIhandler():
                 
                 else:
                     measurement_setup_window["-IMGFOLDER-"].update(background_color="red")
-                    popup_win = gui.popup("Folder does not contain any images or supported images")
+                    loc = measurement_setup_window.CurrentLocation()
+                    gui.popup("init_pop_img", loc)
                     measurement_setup_window.force_focus()
-                    threading.Thread(target=wait, args=(4, popup_win), daemon=True).start()
+                    measurement_setup_window["-IMGFOLDER-"].SetFocus()
+                    #threading.Thread(target=wait, args=(2, popup_win), daemon=True).start()
 
 
-            if event == "Accept":
+            if event == "-CONTINUE-":
                 measurement_setup_window.close()                
                 return imgfolder
             
@@ -167,23 +213,43 @@ class UIhandler():
 
 
     def inspect_img_folder(self, folder_dir):
-        file_list = os.listdir(folder_dir)
-        extensions = [".JPG", ".jpg", ".jpeg", ".png", ".tiff", ".tif",
-                      ".exr", ".webp", ".bmp", ".dng", ".raw"]
-        for file in file_list:
-            if file.endswith(tuple(extensions)):
-                return True
+        try:
+            file_list = os.listdir(folder_dir)
+            extensions = [".JPG", ".jpg", ".jpeg", ".png", ".tiff", ".tif",
+                        ".exr", ".webp", ".bmp", ".dng", ".raw"]
+            for file in file_list:
+                if file.endswith(tuple(extensions)):
+                    return True
         
-        return False
-                
+            return False
+
+        except:
+            return False
+
+
+
+
+    def inspect_project_folder(self, folder_dir, project_name):
+        
+        folder_list = os.listdir(folder_dir)
+
+        if not folder_list: 
+            return True     # empty folder structure
+        
+        for folder in folder_list:
+                if folder.startswith(project_name):
+                    return False    # folder with same name is already existing
+            
+        return True     # no folder with same name existing 
+
 
 
 
     def get_licence_pin(self, licence_browse_window):
 
-        accept = licence_browse_window['Accept']
-        pay = licence_browse_window["Pay"]
-        cont = licence_browse_window["Continue"]
+        accept = licence_browse_window['-CONTINUE-']
+        pay = licence_browse_window["-PAY_BTN-"]
+        cont = licence_browse_window["-CONTINUE-"]
 
         # event loop licence browse
         while True:
@@ -196,7 +262,7 @@ class UIhandler():
             if values["-CHECK-"] == True:
                 cont.update(disabled = False)
 
-            if event == "Continue":
+            if event == "-CONTINUE-":
                 licence_browse_window.close()
                 break
 
@@ -204,15 +270,15 @@ class UIhandler():
                 folder = values["-FILE-"]
                 accept.update(disabled = False)
             
-            if event == "-PIN-":
-                pin = values["-PIN-"]
+            if event == "-PIN_INPUT-":
+                pin = values["-PIN_INPUT-"]
                 pay.update(disabled = False )
 
             if event == "Accept":
                 licence_browse_window.close()
                 return folder
             
-            if event == "Pay":
+            if event == "-PAY_BTN-":
                 licence_browse_window.close()
                 return pin
             
@@ -221,7 +287,7 @@ class UIhandler():
 
     def get_marker_names(self, gui, marker_input_window, target_list):
 
-        okay = marker_input_window["Continue"]
+        okay = marker_input_window["-CONTINUE-"]
 
         # set listener flags to low
         # reference system/markers
@@ -282,7 +348,7 @@ class UIhandler():
             else:
                 okay.update(disabled=True)
 
-            if event == "Continue":
+            if event == "-CONTINUE-":
                 marker_input_window.close()
                                     
                 return [origin_marker, horizontal_marker, vertical_marker], target_list.labels, ref_distance
@@ -326,8 +392,7 @@ class UIhandler():
             marker_input_window["-DIST-"].update(background_color="red")
 
             # update tooltip with warning and correct format suggestion
-            marker_input_window["-DIST-"].TooltipObject.text = "Incorrect format, must be xxx.x"
-
+            marker_input_window["-DIST-"].TooltipObject.text = getText("mrk_tip_wrongdist")
             distance_flag = False
 
             return distance_flag, None
@@ -337,6 +402,7 @@ class UIhandler():
 
     def select_from_project_list(self, load_window, recent_projects, project_list):
         load_btn = load_window["-LOAD-"]
+        delete_btn = load_window["-DEL-"]
 
         while True:
             event, values = load_window.read()
@@ -350,7 +416,8 @@ class UIhandler():
             if event == "-SELECT-":
                 # gets the selected element from the recent project list
                 project_name = recent_projects.get()[0]
-                load_btn.update(disabled=False)                      
+                load_btn.update(disabled=False)  
+                delete_btn.update(disabled=False)                    
 
 
             if event == "-LOAD-":
@@ -358,6 +425,37 @@ class UIhandler():
                 selected_project = next((p for p in project_list if p.name == project_name), None)
                 load_window.close()
                 return selected_project
+            
+            if event == "-DEL-":
+                # find project in project list based on selected name
+                selected_project = next((p for p in project_list if p.name == project_name), None)
+
+                warn_window = GUI.make_warning_window(getText("meas_del_warn"))
+
+                while True:
+                    event, values = warn_window.read()
+            
+                    # End if window is closed
+                    if event == sg.WIN_CLOSED:
+                        warn_window.close()
+                        break
+
+                    if event == "-ACKNOWLEDGE-":
+                        selected_project.delete_directory()
+                        project_list.remove_project(selected_project)
+
+                        project_names = project_list.get_names()
+                        load_window["-SELECT-"].update(project_names)
+
+                        project_list.save()
+
+                        warn_window.close()
+                        return
+
+                    if event == "-CANCEL-":
+                        warn_window.close()
+                        return
+                
             
             if event == "-SELECT-+-double click-":
                 # find project in project list based on double clicked element 
@@ -375,7 +473,7 @@ class UIhandler():
         remove_btn = overview_window["-DEL-"]
         # duplicate_btn = overview_window["-DUPL-"]   # remove this line
 
-        tooltip_del = "Cannot delete initial measurement"
+        tooltip_del = getText("meas_tip_nodel")
 
         while True:
             event, values = overview_window.read()
@@ -392,12 +490,12 @@ class UIhandler():
                                 
                 # find object with measurement name and return object
                 selected_measurement = next((m for m in project.measurement_list if m.name == meas_name), None)
-                overview_window["-OUTPUT-"].update(["location:", selected_measurement.location, "", 
-                                           "date & time:", selected_measurement.date, selected_measurement.time, "",
-                                           "reference marker:", selected_measurement.ref_marker_names[0], 
+                overview_window["-OUTPUT-"].update([getText("meas_txt_loc"), selected_measurement.location, "", 
+                                           getText("meas_txt_d&t"), selected_measurement.date, selected_measurement.time, "",
+                                           getText("meas_txt_refM"), selected_measurement.ref_marker_names[0], 
                                            selected_measurement.ref_marker_names[1], 
                                            selected_measurement.ref_marker_names[2],"", 
-                                           "target marker:", selected_measurement.target_marker_names[0], 
+                                           getText("meas_txt_trgtM"), selected_measurement.target_marker_names[0], 
                                            selected_measurement.target_marker_names[1],
                                            selected_measurement.target_marker_names[2],""])
                 
@@ -406,7 +504,7 @@ class UIhandler():
                     calc_btn.update(disabled = False)
                     remove_btn.update(disabled = False)
                     # duplicate_btn.update(disabled = False) # remove this line
-                    overview_window["-DEL-"].TooltipObject.text = "Removes selected measurement irreversibly"
+                    overview_window["-DEL-"].TooltipObject.text = getText("meas_txt_measInfo")
 
                 
                 else: 
@@ -422,6 +520,8 @@ class UIhandler():
                 measurement.transform_points()
                 measurement.sort_points()
                 project.add_to_measurement_list(measurement)
+                project.calc_displacement(measurement)
+                project.calc_distance_to_origin(measurement)
 
                 measurement.visualize_points()
                 measurement.save()
@@ -429,8 +529,11 @@ class UIhandler():
                 #project_list.append(project)
                 project_list.save()
 
+                project.dump_xlsx_file()
+
                 measurement_names = project.get_measurement_names()
                 overview_window["-SELECT-"].update(measurement_names)
+                overview_window["-SELECT-"].force_focus()
 
 
             if event == "-CALC-":
@@ -442,7 +545,7 @@ class UIhandler():
 
             if event == "-DEL-":
                 # make popup window to check for validity
-                warn_window = GUI.make_warning_window("Are you sure you? This will delete the measurement irreversibly!")
+                warn_window = GUI.make_warning_window(getText("meas_del_warn"))
 
                 while True:
                     event, values = warn_window.read()
@@ -452,7 +555,7 @@ class UIhandler():
                         warn_window.close()
                         break
 
-                    if event == "Acknowledge":
+                    if event == "-ACKNOWLEDGE-":
                         selected_measurement.delete_directory()
                         project.remove_from_measurement_list(selected_measurement)
 
@@ -461,10 +564,11 @@ class UIhandler():
 
                         project.save()
                         project_list.save()
+                        project.dump_xlsx_file()
 
                         warn_window.close()
 
-                    if event == "Cancel":
+                    if event == "-CANCEL-":
                         warn_window.close()
                         
 
@@ -480,8 +584,18 @@ class UIhandler():
 
 
 
+    def dye_background(self, bg_color, element_to_dye):
+        element_to_dye.update(background_color=bg_color)
 
 
+
+
+    def create_popup_above(self, textID, current_win, element):
+        gui = GUI()
+        loc = current_win.CurrentLocation()
+        gui.popup(textID, loc)
+        current_win.force_focus()
+        current_win[element].SetFocus()
 
 
 
@@ -492,7 +606,8 @@ def wait(time, popup_win):
     while current_time <= time:
         sleep(1)
         current_time += 1
-    popup_win.close()
+    print("delete popup")
+    del popup_win
     return 
 
 

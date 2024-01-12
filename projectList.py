@@ -75,5 +75,6 @@ class ProjectList(list):
 
 
 
-
+    def remove_project(self, project):
+        self.remove(project)
 

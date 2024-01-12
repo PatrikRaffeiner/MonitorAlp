@@ -1,5 +1,6 @@
 import subprocess
 from adjustText import adjust_text
+import xlsxwriter
 
 # local imports 
 from measurement import *
@@ -17,13 +18,13 @@ class Project():
     # function to initialize project variables via user input:
     # location, name, RealityCapture execution dir, 
     # availability of permanent licence 
-    def setup(self):
+    def setup(self, project_list):
 
         # creates and returns project setup window
         project_setup_window = self.Gui.make_project_setup_win()
 
         # set project members from UI
-        self.location, self.RC_path, self.permanent_licence_active, self.name = self.UiHandler.handle_project_setup(project_setup_window)
+        self.location, self.RC_path, self.permanent_licence_active, self.name = self.UiHandler.handle_project_setup(project_setup_window, project_list)
 
 
 
@@ -31,16 +32,14 @@ class Project():
 
         # check for additional or initial measurement
         if init_status:
-            print("init measurement")
             measurement_setup_window = self.Gui.make_init_measurement_setup_win()
-            imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui)
+            imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui, self.name)
 
             marker_input_window = self.Gui.make_marker_input_window(self.target_list)
             reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
             
 
         else: # additional measurement
-            print("additional measurement")
             measurement_setup_window = self.Gui.make_measurement_setup_win()
             imgs_dir = self.UiHandler.get_img_dir(measurement_setup_window, self.Gui)
 
@@ -48,7 +47,6 @@ class Project():
             target_list = self.measurement_list[0].target_marker_names
             ref_dist = self.measurement_list[0].ref_distance
         
-        print(ref_dist)
 
 
         # TODO: differentiate between licence path and pin (maybe if pin.type == integer, achtung none)
@@ -69,7 +67,6 @@ class Project():
     def RC_registration_and_save_points(self, measurement):
         # path to save control points (measurement points)
         measurement.controlPoint_path = measurement.dir + "/controlPoints.csv"
-        print(measurement.controlPoint_path)
 
         # definition of reference (marker) system
         origin = measurement.ref_origin_name
@@ -273,6 +270,164 @@ class Project():
 
 
 
+    def dump_xlsx_file(self):
+
+        def get_displacement(point, coord):
+            try: 
+                return "{:.2f}".format(1000*point.displacement[coord])
+            
+            except Exception as ex:
+                print(ex)
+                return "-"
+            
+        
+        def get_abs_displacement(point):
+            try: 
+                eulcid_d = np.linalg.norm([get_displacement(point, 0), get_displacement(point, 1), get_displacement(point, 2)])
+                return "{:.2f}".format(eulcid_d)
+
+            except: 
+                return "-"
+
+        dump_dir = self.dir + "/" + self.name + ".xlsx"
+
+        # Create a workbook and add a worksheet.
+        workbook = xlsxwriter.Workbook(dump_dir)
+        worksheet = workbook.add_worksheet()
+
+        big = workbook.add_format()
+        big.set_font_size(30)
+
+        # Write project title
+        worksheet.write(0,1, self.name, big)
+
+        # initial value to calculate first block start
+        block_end = 2
+
+
+        # set column width for readability
+        worksheet.set_column_pixels(1, 1, 91)
+        worksheet.set_column_pixels(5, 5, 130)
+
+        for count, measurement in enumerate(self.measurement_list):
+            # rotate text for merged columns
+            align_center_rotate = workbook.add_format({"align" : "center"})
+            align_center_rotate.set_rotation(90)
+            align_center = workbook.add_format({"align" : "center"})
+
+            # calculate the length and position of each measurement block 
+            block_start = block_end + 2
+            block_end = block_start + 5 + len(measurement.target_points)
+
+            # merge vertical measurement title block
+            merging_cells_m = "A" + str(block_start) + ":A" + str(block_end)
+            worksheet.merge_range(merging_cells_m, measurement.name, align_center_rotate)
+
+            # merging coordinate cells and displacement
+            merging_cells_c = "C" + str(block_start) + ":E" + str(block_start)
+            worksheet.merge_range(merging_cells_c, "Koordinaten (mm)", align_center)
+
+            merging_cells_d = "G" + str(block_start) + ":J" + str(block_start)
+            worksheet.merge_range(merging_cells_d, "Verschiebungen (mm)", align_center)
+
+            # making column titles
+            col_titles = ["Marker Name", "x", "y", "z", "Distanz zu Ursprung", "dx", "dy", "dz", "dabs"]
+            
+            for count, element in enumerate(col_titles):
+                worksheet.write(block_start, 1+count, element, align_center)
+            
+            # make rows of reference points
+            for row_count, point in enumerate(measurement.ref_points):
+                dist_origin = np.linalg.norm(point.get_pos())
+                row = [point.name, 
+                    "{:.2f}".format(point.x*1000), # x-coord
+                    "{:.2f}".format(point.y*1000), # y-coord
+                    "{:.2f}".format(point.z*1000), # z-coord
+                    "{:.2f}".format(dist_origin*1000),  # euclidian distance to origin
+                        "-", "-", "-", "-"]                  # displacements 
+
+                for col_count, element in enumerate(row):
+                    worksheet.write(block_start+row_count+1, 1+col_count, element, align_center)
+
+            # make rows of target points
+            for row_count, point in enumerate(measurement.target_points):
+                dist_origin = np.linalg.norm(point.get_pos())
+
+                row = [point.name, 
+                    "{:.2f}".format(point.x*1000), # x-coord
+                    "{:.2f}".format(point.y*1000), # y-coord
+                    "{:.2f}".format(point.z*1000), # z-coord
+                    "{:.2f}".format(dist_origin*1000), # euclidian distance to origin
+                    get_displacement(point, 0),
+                    get_displacement(point, 1),
+                    get_displacement(point, 2),
+                    get_abs_displacement(point)]
+                
+
+                for col_count, element in enumerate(row):
+                    worksheet.write(block_start+row_count+4, 1+col_count, element, align_center)
+
+        workbook.close()
+
+
+
+
+    def delete_directory(self):
+        def try_to_delete(el):
+            print("deleting.... " + el)
+            try:
+                shutil.rmtree(self.dir +"/"+ el)
+                print("removed " + el)
+            except Exception as ex:
+                try:
+                    os.remove(self.dir +"/"+ el)
+                    print("removed " + el)
+                except Exception as ex:
+                    print("could not remove: " + el)
+                    # do something here
+
+
+        dir_list = os.listdir(self.dir)
+        from_project = []
+        not_from_project = []
+
+        for element in dir_list:
+            if element.startswith(self.name):
+                from_project.append(element)
+            else:
+                not_from_project.append(element)
+            
+        warning_win = GUI.make_delete_warning(from_project, not_from_project)
+
+        while True:
+            event, values = warning_win.read()
+
+            # End if window is closed
+            if event == sg.WIN_CLOSED:
+                warning_win.close()
+                break
+
+            if event == "-RMVALL-":
+                for element in dir_list:
+                    try_to_delete(element)
+                    warning_win.close()
+                    break
+                    
+            if event == "-RMHIGH-":
+                for element in from_project:
+                    try_to_delete(element)
+                    warning_win.close()
+                break
+            
+            if event == "-CANCEL-":
+                    warning_win.close()
+                    break
+                
+            
+
+
+
+
 
     class TargetList(list):
         def __init__(self):
@@ -284,9 +439,8 @@ class Project():
             self.labels = [None]
 
         
-        def make_current_marker_text(self, target_num):
+        def make_current_marker_character(self, target_num):
             char = self.init_char + target_num
-            text = "Target marker " + chr(char)
-
-            return text    
+            
+            return chr(char)    
 

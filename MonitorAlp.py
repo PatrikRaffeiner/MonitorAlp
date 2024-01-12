@@ -1,10 +1,8 @@
 import PySimpleGUI as sg
 
 # local imports
-
 from project import *
 from projectList import *
-#from helpers import *
 import helpers
 
 
@@ -17,13 +15,13 @@ import helpers
 GUI.def_theme("Gray Gray Gray")
 
 # initialize home window
-home_win = GUI.make_start_layout()
+home_win = GUI.make_start_window()
 
 # classmethod loads recent projects from permanent file
 project_list = ProjectList.loader()
 
 # global variable/class
-print(f"initial readout {readout}")
+print(f"initial readout {helpers.readout}")
 print("in main")
 
 
@@ -41,7 +39,7 @@ while True:
 
         # catch closed setup window and return to home
         try:
-            new_project.setup()
+            new_project.setup(project_list)
             init_measurment = new_project.create_measurement(init_status=True)
 
             new_project.RC_registration_and_save_points(init_measurment)
@@ -55,6 +53,8 @@ while True:
             init_measurment.visualize_points()
             init_measurment.save()
             new_project.save()
+
+            new_project.dump_xlsx_file()
 
         except Exception as ex:
             print("Error during measurement processing:", ex)
@@ -83,29 +83,27 @@ while True:
     # handle global language selection
     if values["-LANG-"] == "DE":
         # global 
-        del helpers.readout
-        helpers.readout = deTextReadOut()
-        print(f"german readout {readout}")
-        
-        #local (current window)
-        home_win["-TITLE-"].update(readout.gettext("hm_txt_title"))
-        home_win["-START-"].update(readout.gettext("hm_btn_start"))
-        home_win["-LOAD-"].update(readout.gettext("hm_btn_load"))
+        helpers.readout = helpers.deTextReadOut()
+        print(f"german readout {helpers.readout}")
 
+        home_win.close()
+        del home_win
+
+        home_win = GUI.make_start_window()
+        home_win["-LANG-"].update("DE")
 
 
     else:
         # global
-        del readout
-        readout = enTextReadOut()
-        print(f"english readout {readout}")
+        helpers.readout = helpers.enTextReadOut()
+        print(f"english readout {helpers.readout}")
+
+        home_win.close()
+        del home_win
+
+        home_win = GUI.make_start_window()
+        home_win["-LANG-"].update("EN")
         
-        #local (current window)
-        home_win["-TITLE-"].update(readout.gettext("hm_txt_title"))
-        home_win["-START-"].update(readout.gettext("hm_btn_start"))
-        home_win["-LOAD-"].update(readout.gettext("hm_btn_load"))
-
-
 
 home_win.close()
 

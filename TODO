@@ -4,7 +4,6 @@ TODO:
   + Herausfinden von bugs
   + Verbesserungsmöglichkeiten zur Bedienung
 
-- "Remove Project"-button hinzufügen (+ Warnhinweis "are you sure?")
 
 - Warnhinweis bei schließen des Hintergrundfensters (Home Window), 
   möglicher Datenverlust von ungespeicherten Daten
@@ -16,25 +15,14 @@ TODO:
 
 - Tooltips einfügen, wo machen sie Sinn?
 
-- Überprüfe doppelte Projektnamen bei erstellen von neuen Projekten
-
-- Überprüfe doppelte Messungsnamen bei hinzufügen von Messungen
-
 - Fenstergröße checken und anpassen (vor allem Home-Screen)
 
-- Bessere Darstellung bei Visualisierung, Einheiten, Namen der Marker, ...
-
-- Bei Abbruch von RC (neue messung) 
-  crash wegen Erstellung von neuem/vorhandenen Ordner??
+- Bessere Darstellung bei Visualisierung, Einheiten, Namen der Marker, Pfeile für Koordinatensystem...
 
 - RC-Pfad zu permanentem File hinzufügen und nach Initiierung abfragen 
   (bei Erstellung von neuen Projekten keine Angabe von RC-Pfad mehr nötig)
 
-- DE und EN version, dropDown Menü
-
 - add "open in RC" button to measurement menu
-
-- messergebisse als excel ausgeben
 
 - Bessere Benennung (user freundlicher) der spalten in calc displacement
 
@@ -46,15 +34,25 @@ TODO:
 
 - default ref. distanz??
 
-- marker namen input überprüfen 
+- marker name input überprüfen 
 
 - remove target marker button
 
-- clear and remove button in project load win
-
 - hinweis auf ungenauigkeit einfügen (haftungsausschluss)
 
-- remove duplicate button in measurement list 
+- müssen die aufzeichnungen für nachweis (im schlimmsten fall vor gericht/behörde) ein gewisses format haben??
+
+- remove init measurement and delete whole project
+
+- macht eine Referenz-Distanz-Überprüfung sinn? 
+  (mit zwei zusätzlichen markern an referenzplatte)
+
+- manuelle (händische) messung hinzufügen
+
+- pdf generieren mit überblick der messungen/verschiebungen
+  ampelfarben (OK-grün, Achtung-orange, Warnung-rot)
+
+- vorab checken ob dump files (speziell xlsx-files) beschreibbar sind (geöffnet) 
 
 
 
@@ -88,3 +86,24 @@ DONE:
 
 - Anzeigen der euklidischen Distanzen zw. Referenz-Ursprung und Target
   Für manuelle (Backup-) Messung
+
+- Bei Abbruch von RC (neue messung) 
+  crash wegen Erstellung von neuem/vorhandenen Ordner??
+
+- remove duplicate button in measurement list 
+
+- DE und EN version, dropDown Menü
+
+- Überprüfe doppelte Projektnamen bei erstellen von neuen Projekten
+
+- Überprüfe doppelte Messungsnamen bei hinzufügen von Messungen
+
+- distanz zu ursprung pro messung, nicht pro verschiebung
+  evtl. in übersicht zu entnehmen
+
+- "Remove Project"-button hinzufügen (+ Warnhinweis "are you sure?")
+
+- messergebisse als excel ausgeben
+
+- clear and remove button in project load win
+
