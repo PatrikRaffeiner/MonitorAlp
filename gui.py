@@ -38,7 +38,7 @@ class GUI():
 
 
 
-    def make_project_setup_win(self):
+    def make_project_setup_win(self, RC_dir):
         # creates project setup window
 
         # tooltips
@@ -50,10 +50,17 @@ class GUI():
             [sg.Text(getText("setup_txt_name")),
             sg.In(size=(25,1), default_text="z.B. Klettersteig Ilmspitz", enable_events= True, key="-LOC-")]] 
         
-        RC_path_col = [
-            [sg.Text("RealityCapture exe"),
-            sg.In(size=(25,1), enable_events= True, key="-EXE-", tooltip=tip_exe),
-            sg.FileBrowse(getText("browse_btn"))]] 
+        # handles possible existing RealityCapture execution directory from master file
+        if RC_dir == None:
+            RC_lines = [
+            [sg.Text(getText("pjct_txt_RC"))],
+            [[sg.Text("RealityCapture exe"),
+             sg.In(size=(25,1), enable_events= True, key="-EXE-", tooltip=tip_exe),
+             sg.FileBrowse(getText("browse_btn"))]]] 
+
+        # empty line due to existing RC execution dir    
+        else: 
+            RC_lines = [sg.Text("")]
         
         licence_checkbox_col = [
             [sg.Checkbox(getText("setup_cbx_licence"), enable_events= True, key="-CHECK-", default=False)]]
@@ -63,8 +70,7 @@ class GUI():
         layout_project_setup = [ 
             [sg.Text(getText("pjct_txt_name"))],
             [sg.Column(project_location_col)],
-            [sg.Text(getText("pjct_txt_RC"))],
-            [sg.Column(RC_path_col)],
+            RC_lines,
             [sg.HSeparator()],
             [sg.Text(getText("pjct_cbx_licence"))],
             [sg.Column(licence_checkbox_col)],
@@ -404,7 +410,8 @@ class GUI():
         sg.theme('DarkRed1')
         pop_window = sg.popup_non_blocking(getText(ID), no_titlebar=True, 
                                            auto_close=True, location=location,
-                                           auto_close_duration=4.5)
+                                           auto_close_duration=4.5, 
+                                           keep_on_top=True)
         sg.theme(cls.theme)
         return pop_window
 

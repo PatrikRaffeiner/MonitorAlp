@@ -42,7 +42,6 @@ class ProjectList(list):
     @classmethod
     def loader(cls):
         # load project list from permanent dir file 
-        # permanent_file = "MonitorAlp/ProjectList.pkl"
 
         try: 
             with open(cls.permanent_file, "rb") as f:
@@ -62,8 +61,10 @@ class ProjectList(list):
 
         project_names = self.get_names()
         if len(project_names) == 0:
-            popup_win = gui.popup("No recent projects existent")
-            threading.Thread(target=wait, args=(3, popup_win), daemon=True).start()
+            w, h = sg.Window.get_screen_size()
+
+            popup_win = gui.popup("pop_txt_nopjct", [w/2-50, h/2 +50])
+
 
             return False
 

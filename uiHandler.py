@@ -9,16 +9,23 @@ from gui import *
 
 
 class UIhandler():
-    def handle_project_setup(self, project_setup_window, project_list):
+    def handle_project_setup(self, project_setup_window, master_obj):
+
+        project_list = master_obj.project_list
 
         # link buttons to events
         proceed = project_setup_window["-CONTINUE-"]
         
         # initiate listener flags with "low"
         loc_flag = False
-        exe_flag = False
         licence_flag = False
 
+        # handle possible existing RealityCapture execution directory 
+        if master_obj.RC_dir != None:
+            exe_flag = True
+            RC_path = master_obj.RC_dir
+        else:
+            exe_flag = False
 
         # event loop project setup input
         while True:
@@ -44,9 +51,10 @@ class UIhandler():
 
             # event listener for RC execution path
             if event == "-EXE-":
-                RC_path = values["-EXE-"]
+                RC_input = values["-EXE-"]
 
-                exe_flag = self.handle_execution_input(RC_path, project_setup_window)  
+                exe_flag = self.handle_execution_input(RC_input, project_setup_window)  
+                RC_path = RC_input
 
             # event listener for permanent licence checkbox
             if event == "-CHECK-":
@@ -66,6 +74,7 @@ class UIhandler():
                 name = location
 
                 # set project members from UI
+                print(location, RC_path, licence_flag, name)
                 return location, RC_path, licence_flag, name
 
 
@@ -82,11 +91,11 @@ class UIhandler():
 
 
 
-    def handle_execution_input(self, RC_path, project_setup_window):
+    def handle_execution_input(self, RC_input, project_setup_window):
         tip_wrong_exe = getText("pjct_tip_wrongRC")
         
         # correct path to RealityCapture execution
-        if RC_path.endswith("RealityCapture.exe"):
+        if RC_input.endswith("RealityCapture.exe"):
             exe_flag = True
             # highlight input line 
             project_setup_window["-EXE-"].update(background_color="white")
@@ -467,7 +476,7 @@ class UIhandler():
                 
 
 
-    def handle_measurement_overview(self, overview_window, select_lst, project, project_list):
+    def handle_measurement_overview(self, overview_window, select_lst, project, master_obj):
         
         calc_btn = overview_window["-CALC-"]
         remove_btn = overview_window["-DEL-"]
@@ -516,29 +525,31 @@ class UIhandler():
 
             if event == "-ADD-":
                 measurement = project.create_measurement(init_status=False)
-                project.RC_registration_and_save_points(measurement)
+                project.RC_registration_and_save_points(measurement, master_obj.RC_dir)
                 measurement.transform_points()
                 measurement.sort_points()
                 project.add_to_measurement_list(measurement)
                 project.calc_displacement(measurement)
                 project.calc_distance_to_origin(measurement)
+                
 
                 measurement.visualize_points()
                 measurement.save()
                 project.save()
                 #project_list.append(project)
-                project_list.save()
+                master_obj.save()
 
                 project.dump_xlsx_file()
 
                 measurement_names = project.get_measurement_names()
                 overview_window["-SELECT-"].update(measurement_names)
-                overview_window["-SELECT-"].force_focus()
+                overview_window.force_focus()
 
 
             if event == "-CALC-":
                 project.calc_displacement(selected_measurement)
                 project.calc_distance_to_origin(selected_measurement)
+                project.plot_displacement(selected_measurement)
                 project.visualize_displacement(selected_measurement)
                 
 
@@ -563,7 +574,7 @@ class UIhandler():
                         overview_window["-SELECT-"].update(measurement_names)
 
                         project.save()
-                        project_list.save()
+                        master_obj.save()
                         project.dump_xlsx_file()
 
                         warn_window.close()
@@ -604,9 +615,9 @@ class UIhandler():
 def wait(time, popup_win):
     current_time = 0 
     while current_time <= time:
+        popup_win["-KEY-"].SetFocus()
         sleep(1)
         current_time += 1
-    print("delete popup")
     del popup_win
     return 
 

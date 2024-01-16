@@ -19,9 +19,6 @@ TODO:
 
 - Bessere Darstellung bei Visualisierung, Einheiten, Namen der Marker, Pfeile für Koordinatensystem...
 
-- RC-Pfad zu permanentem File hinzufügen und nach Initiierung abfragen 
-  (bei Erstellung von neuen Projekten keine Angabe von RC-Pfad mehr nötig)
-
 - add "open in RC" button to measurement menu
 
 - Bessere Benennung (user freundlicher) der spalten in calc displacement
@@ -107,3 +104,5 @@ DONE:
 
 - clear and remove button in project load win
 
+- RC-Pfad zu permanentem File hinzufügen und nach Initiierung abfragen 
+  (bei Erstellung von neuen Projekten keine Angabe von RC-Pfad mehr nötig)

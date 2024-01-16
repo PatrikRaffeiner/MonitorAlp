@@ -63,7 +63,7 @@ class TextReadOut(ABC):
                             "cancel_btn" : ["Cancel", "Abbruch"],
                             "acknowl_btn" : ["Acknowledge", "Bestätigen"],
                             "warn_btn" : ["Warning!", "Achtung!"],
-                            "" : ["", ""],
+                            "pop_txt_nopjct" : ["No recent projects existent", "Noch keine Projekte gespeichert"],
                             "" : ["", ""],
                             "browse_btn" : ["Browse", "Durchsuchen"],
                             "hm_txt_title" : ["Monitoring Tool for Alpine Infrastructure", "Monitoring Tool für Alpine Infrastruktur"], 
@@ -151,4 +151,6 @@ class deTextReadOut(TextReadOut):
 
 # global variable/class
 readout = deTextReadOut()
+
+
 

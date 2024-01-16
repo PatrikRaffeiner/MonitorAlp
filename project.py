@@ -15,16 +15,17 @@ class Project():
         self.target_list = self.TargetList()
 
 
-    # function to initialize project variables via user input:
-    # location, name, RealityCapture execution dir, 
-    # availability of permanent licence 
-    def setup(self, project_list):
+
+
+    def setup(self, master_obj):
 
         # creates and returns project setup window
-        project_setup_window = self.Gui.make_project_setup_win()
+        project_setup_window = self.Gui.make_project_setup_win(master_obj.RC_dir)
 
         # set project members from UI
-        self.location, self.RC_path, self.permanent_licence_active, self.name = self.UiHandler.handle_project_setup(project_setup_window, project_list)
+        self.location, RC_path, self.permanent_licence_active, self.name = self.UiHandler.handle_project_setup(project_setup_window, master_obj)
+        master_obj.set_RC_dir(RC_path)
+
 
 
 
@@ -64,7 +65,7 @@ class Project():
 
          
 
-    def RC_registration_and_save_points(self, measurement):
+    def RC_registration_and_save_points(self, measurement, RC_dir):
         # path to save control points (measurement points)
         measurement.controlPoint_path = measurement.dir + "/controlPoints.csv"
 
@@ -80,7 +81,7 @@ class Project():
 
         # run RealityCapture, detect markers, define reference distance, export 3D-point-cooridnates 
         result = subprocess.run(
-            [self.RC_path, 
+            [RC_dir, 
             "-addFolder", measurement.img_path, 
             "-align", 
             "-detectMarkers", 
@@ -204,11 +205,11 @@ class Project():
 
 
 
-    def overview(self, project_list):
+    def overview(self, master_obj):
         measurement_names = self.get_measurement_names()
         overview_window, select_lst = self.Gui.make_project_overview_window(measurement_names, self)
 
-        self.UiHandler.handle_measurement_overview(overview_window, select_lst, self, project_list)
+        self.UiHandler.handle_measurement_overview(overview_window, select_lst, self, master_obj)
 
 
 
@@ -229,10 +230,8 @@ class Project():
             dz = subseq_target.z - init_target.z
 
             subseq_target.set_displacement(dx, dy, dz)
-            
-        self.calc_distance_to_origin(subseq_measurement)
 
-        self.Gui.show_displacement(init_targets, subseq_targets)
+        
 
 
 
@@ -247,7 +246,18 @@ class Project():
             target.set_distance_from_origin(dist)
 
 
-    
+
+    def plot_displacement(self, subseq_measurement):
+        init_measurement = self.measurement_list[0]
+
+        init_targets = init_measurement.target_points
+        subseq_targets = subseq_measurement.target_points
+
+        self.Gui.show_displacement(init_targets, subseq_targets)
+
+
+
+
 
     def visualize_displacement(self, measurement):
 

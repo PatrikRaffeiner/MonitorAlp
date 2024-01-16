@@ -36,6 +36,7 @@ class Measurement():
 
 
 
+
     def create_name(self, project):
         temp_date = self.date.replace("/", "-")
         new_name = self.location + "_" + temp_date 
