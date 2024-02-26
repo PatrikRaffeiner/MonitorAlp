@@ -40,11 +40,11 @@ class ProjectList(list):
         
 
     @classmethod
-    def loader(cls):
+    def loader(cls, dir):
         # load project list from permanent dir file 
 
         try: 
-            with open(cls.permanent_file, "rb") as f:
+            with open(dir, "rb") as f:
                 # list of previous projects
                 file = pickle.load(f)
                 return file
@@ -63,7 +63,7 @@ class ProjectList(list):
         if len(project_names) == 0:
             w, h = sg.Window.get_screen_size()
 
-            popup_win = gui.popup("pop_txt_nopjct", [w/2-50, h/2 +50])
+            popup_win = gui.non_blocking_popup("pop_txt_nopjct", [w/2-50, h/2 +50])
 
 
             return False

@@ -5,49 +5,69 @@ import matplotlib.pyplot as plt
 import copy
 import shutil
 import numpy as np
+from abc import ABC, abstractmethod         # ABC = abstract class
 
 
 # local imports
 from helpers import read_csv, set_axes_equal
+from gui import getText
+from points import ManualPoint
 
-
-
-class Measurement():
-    def __init__(self, location, ref_marker_names, target_marker_names, 
-                 ref_dist, orig_img_path, project):
+class Measurement(ABC):
+    @abstractmethod
+    def __init__(self, location, ref_marker_names, 
+                 target_marker_names, project):
         
         self.date = date.today().strftime("%d/%m/%Y")
         self.time = datetime.now().strftime("%H:%M:%S")
         self.location = location
         self.ref_marker_names = ref_marker_names
-        self.target_marker_names = target_marker_names
-        self.ref_distance = ref_dist
-        
+        self.comment = ""
+
 
         # reference system names
         self.ref_origin_name = self.ref_marker_names[0]
         self.ref_X_name = self.ref_marker_names[1]
         self.ref_Z_name =  self.ref_marker_names[2]
 
+        self.target_marker_names = target_marker_names
+
+        self.target_points = []
 
         self.create_name(project)
         self.create_dir(project)
-        self.copy_imgs(orig_img_path)
+
+
+                
+
+    @abstractmethod
+    def create_dir(self, project):
+        self.dir = project.dir + "/" + self.name
 
 
 
 
+    @abstractmethod
     def create_name(self, project):
         temp_date = self.date.replace("/", "-")
         new_name = self.location + "_" + temp_date 
         self.name = new_name 
 
+
+
+
+    
+    def make_version(self, measurement_list):
+
+        new_name = self.name
+        
         # check for same measurement name, happens when measurement is performed on the same day
-        for old_measurement in project.measurement_list:
+        for old_measurement in measurement_list:
+            
             if new_name == old_measurement.name:
 
                 # get last element of list
-                last_measurement = project.measurement_list[-1]
+                last_measurement = measurement_list[-1]
                 braket_pos = last_measurement.name.find("(")
 
                 # no braket in last measurement name
@@ -61,13 +81,58 @@ class Measurement():
                     self.name = self.name + "(" + str(version + 1) + ")"
                     break
 
-                
+
+
+
+    def save(self):
+        try:
+            save_dir = self.dir + "/" + self.name + ".pkl"
+            with open(save_dir, "wb") as f:
+                pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        except Exception as ex:
+            print("Error during saving measurement, pickling object (Possibly unsupported):", ex)
+            pass
+
+    
+
+
+    def delete_directory(self):
+        shutil.rmtree(self.dir)
+
+
+
+
+    def set_status(self, status):
+        self.status = status
+
+
+
+class DroneMeasurement(Measurement):
+    # extending the constructor of the parent class (Measurement)
+    def __init__(self, location, ref_marker_names, target_marker_names,
+                 project, ref_dist, orig_img_path):
+        
+        super().__init__(location, ref_marker_names, target_marker_names, project)
+        self.ref_distance = ref_dist
+        self.copy_imgs(orig_img_path)
+
+        self.ref_points = []
+
+
 
 
     def create_dir(self, project):
-        # self.dir = os.path.join(project.dir, self.name)
-        self.dir = project.dir + "/" + self.name
-        os.mkdir(self.dir)
+        super().create_dir(project)
+        os.mkdir(self.dir) 
+
+
+
+
+    def create_name(self, project):
+        super().create_name(project)
+        measurement_list = project.drone_measurement_list
+
+        self.make_version(measurement_list)
 
 
 
@@ -96,8 +161,9 @@ class Measurement():
     
 
     def sort_points(self):
-        self.ref_points = []
-        self.target_points = []
+        # moved to init and parent class
+        # self.ref_points = []
+        # self.target_points = []
 
 
         for ref_marker_name in self.ref_marker_names:
@@ -111,8 +177,9 @@ class Measurement():
 
     
 
-    # function to shift control points of arbitrary coordinate system to origin
+    
     def shift_points(self, raw_points, origin_name):
+        # function to shift control points of arbitrary coordinate system to origin
         zeroed_points = copy.deepcopy(raw_points)
 
         # search point name of origin point 
@@ -217,18 +284,139 @@ class Measurement():
         
 
 
+    def show_measurement_info(self, overview_window):
+        
+        content =  [getText("meas_txt_typeD")[0], getText("meas_txt_typeD")[1], "", # Type
+                    getText("meas_txt_loc"), self.location, "",                     # Location  
+                    getText("meas_txt_d&t"), self.date, self.time, "",              # Time & Date
+                    getText("meas_txt_refM"),                                       
+                    self.ref_marker_names[0],
+                    self.ref_marker_names[1],
+                    self.ref_marker_names[2], "",
+                    getText("meas_txt_trgtM")]                                    # Target marker                                      
 
-    def save(self):
-        try:
-            save_dir = self.dir + "/" + self.name + ".pkl"
-            print(save_dir)
-            with open(save_dir, "wb") as f:
-                pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        except Exception as ex:
-            print("Error during saving measurement, pickling object (Possibly unsupported):", ex)
+        # adding target names to output
+        for target_name in self.target_marker_names:
+            content.append(target_name)
+
+        overview_window["-OUTPUT-"].update(content)
+
+
+
+
+    def check_limits(self):
+        # TODO: set displacement limit 
+        random_displacement_limit = 0.0003      # meter
+
+        # TODO: check any target over limit
+        for target in self.target_points:
+            # check norm displacement
+            abs_displacement = target.displacement[3]
+
+            if abs_displacement > (1.5 * random_displacement_limit):
+                #subseq_measurement.set_status("Achtung")
+                target.set_status("Achtung")
+            
+            elif abs_displacement > random_displacement_limit:
+                #subseq_measurement.set_status("Warnung")
+                target.set_status("Warnung")
+
+            elif abs_displacement < random_displacement_limit: # self.limit:
+                #subseq_measurement.set_status("OK")
+                target.set_status("OK")            
+            
+
+            
+
+
+        # set default status of measurement to "OK"
+        self.set_status("OK")
+
+        # reset if any target point status is not OK (Achtung overwrites Warnung)
+        if any(target_point.status == "Warnung" for target_point in self.target_points):
+            self.set_status("Warnung")
+
+        if any(target_point.status == "Achtung" for target_point in self.target_points):
+            self.set_status("Achtung")        
+
+
+
+
+class ManualMeasurement(Measurement):
+    # extending the constructor of the parent class (Measurement)
+    def __init__(self, location, ref_marker_names, target_marker_names, 
+                 project, target_distances):
+        super().__init__(location, ref_marker_names, target_marker_names, project)
+
+        #self.distance_dict = target_distances
+        for name, distance in zip(target_marker_names, target_distances):
+            point = ManualPoint(name, distance)
+            self.target_points.append(point)
+
 
 
     
+    def create_dir(self, project):
+        # returning the original method from parent class
+        return super().create_dir(project)
+        
 
-    def delete_directory(self):
-        shutil.rmtree(self.dir)
+
+
+    def create_name(self, project):
+        super().create_name(project)
+
+        self.name = self.name + "#"
+        measurement_list = project.manual_measurement_list
+
+        self.make_version(measurement_list)
+
+
+
+
+    def show_measurement_info(self, overview_window):
+        
+        content =  [getText("meas_txt_typeM")[0], getText("meas_txt_typeM")[1], "", # Type
+                    getText("meas_txt_loc"), self.location, "",                     # Location  
+                    getText("meas_txt_d&t"), self.date, self.time, "",              # Time & Date
+                    getText("meas_txt_trgtM")]                                      # Target marker                                      
+
+        # adding target names to output
+        for target in self.target_points:
+            content.append(target.name)
+
+        overview_window["-OUTPUT-"].update(content)
+
+
+
+
+    def check_limits(self):
+        random_displacement_limit = 0.3      # millimeter
+
+
+
+        for target in self.target_points:
+            if abs(target.displacement) < random_displacement_limit:
+
+                target.set_status("OK")
+
+            elif abs(target.displacement) < 1.5*random_displacement_limit:
+                target.set_status("Warnung")
+            
+            elif abs(target.displacement) > 1.5*random_displacement_limit:
+                target.set_status("Achtung")
+
+
+
+        # set default status of measurement to "OK"
+        self.set_status("OK")
+
+        # reset if any target point status is not OK (Achtung overwrites Warnung)
+        if any(target_point.status == "Warnung" for target_point in self.target_points):
+            self.set_status("Warnung")
+
+        if any(target_point.status == "Achtung" for target_point in self.target_points):
+            self.set_status("Achtung")   
+                
+
+

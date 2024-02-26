@@ -15,12 +15,15 @@ import helpers
 # setting global theme
 GUI.def_theme("Gray Gray Gray")
 
+
 # initialize home window
 home_win = GUI.make_start_window()
+
 
 # classmethod loads master object from permanent file
 # contains all recent projects, RC director 
 master_obj = MasterObj.loader()
+
 project_list = master_obj.project_list
 
 
@@ -39,18 +42,34 @@ while True:
         # catch closed setup window and return to home
         try: 
             new_project.setup(master_obj)
-            init_measurment = new_project.create_measurement(init_status=True)
+            init_drone_measurement = new_project.create_drone_measurement(init_status=True)
+            init_manual_measurement = new_project.create_manual_measurement()
 
-            new_project.RC_registration_and_save_points(init_measurment, master_obj.RC_dir)
-            init_measurment.transform_points()
-            init_measurment.sort_points()
-            new_project.add_to_measurement_list(init_measurment)
+
+            new_project.RC_registration_and_save_points(init_drone_measurement, master_obj.RC_dir)
+            
+            # in case reality capture crashed due to any circumstances
+            try: 
+                init_drone_measurement.transform_points()
+            except:
+                init_drone_measurement.delete_directory()
+                print("deleting: " + init_drone_measurement.dir + " because RC crashed")
+                break
+            
+            init_drone_measurement.sort_points()
+            new_project.all_measurement_list.append(init_drone_measurement)
+            new_project.all_measurement_list.append(init_manual_measurement)
+            new_project.drone_measurement_list.append(init_drone_measurement)
+            new_project.manual_measurement_list.append(init_manual_measurement)
+            
+            
+            new_project.calc_distance_to_origin(init_drone_measurement)
 
             project_list.append(new_project)
             master_obj.save()
 
-            init_measurment.visualize_points()
-            init_measurment.save()
+            init_drone_measurement.visualize_points()
+            init_drone_measurement.save()
             new_project.save()
 
             new_project.dump_xlsx_file()

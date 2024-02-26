@@ -11,7 +11,9 @@ class Project():
     def __init__(self):
         self.Gui = GUI()
         self.UiHandler = UIhandler()
-        self.measurement_list = []
+        self.all_measurement_list = []
+        self.drone_measurement_list = []
+        self.manual_measurement_list = []
         self.target_list = self.TargetList()
 
 
@@ -29,7 +31,8 @@ class Project():
 
 
 
-    def create_measurement(self, init_status):
+    def create_drone_measurement(self, init_status):
+
 
         # check for additional or initial measurement
         if init_status:
@@ -37,16 +40,17 @@ class Project():
             imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui, self.name)
 
             marker_input_window = self.Gui.make_marker_input_window(self.target_list)
-            reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
+            self.reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
             
 
         else: # additional measurement
             measurement_setup_window = self.Gui.make_measurement_setup_win()
             imgs_dir = self.UiHandler.get_img_dir(measurement_setup_window, self.Gui)
 
-            reference_list = self.measurement_list[0].ref_marker_names
-            target_list = self.measurement_list[0].target_marker_names
-            ref_dist = self.measurement_list[0].ref_distance
+
+            reference_list = self.drone_measurement_list[0].ref_marker_names
+            target_list = self.drone_measurement_list[0].target_marker_names
+            ref_dist = self.drone_measurement_list[0].ref_distance
         
 
 
@@ -57,13 +61,47 @@ class Project():
             licence_pin = self.UiHandler.get_licence_pin(licence_browse_window)
 
 
-        new_measurement = Measurement(self.location, reference_list, target_list,
-                                       ref_dist, imgs_dir, self)
+
+        pop_up = GUI.popup_window("pjct_pop_wait")
+        new_measurement = None
+
+        while new_measurement == None:
+            pop_up.perform_long_operation(lambda: DroneMeasurement(self.location,
+                                                                   self.reference_list,
+                                                                   target_list,
+                                                                   self, 
+                                                                   ref_dist, 
+                                                                   imgs_dir),
+                                                                   '-MEASUREMENT_COMPLETED-')
+            
+            event, values = pop_up.read()
+
+            if event == '-MEASUREMENT_COMPLETED-':
+                new_measurement = values[0]
+                pop_up.close()
+                return new_measurement
+
+                
+
+
+    def create_manual_measurement(self):
         
-        return new_measurement
+        manual_measurement_window = self.Gui.make_manual_measurement_input_window(self)
+        manual_measurement_dict = self.UiHandler.get_manual_measurement_distances(manual_measurement_window, self)
+        
+        new_manual_measurement = ManualMeasurement(
+                                    self.location,            
+                                    self.reference_list,
+                                    [*manual_measurement_dict.keys()],
+                                    self, 
+                                    manual_measurement_dict.values())
+        
+        manual_measurement_window.close()
+        
+        return new_manual_measurement
 
 
-         
+
 
     def RC_registration_and_save_points(self, measurement, RC_dir):
         # path to save control points (measurement points)
@@ -94,15 +132,21 @@ class Project():
 
 
 
+    # maybe delete
+    def get_measurement_lists(self):
 
-    def add_to_measurement_list(self, m):
-        self.measurement_list.append(m)
+        self.manual_measurement_list = []
+        self.drone_measurement_list = []
 
+        for measurement in self.all_measurement_list: 
+            if measurement.name.__contains__("#"):
+                self.manual_measurement_list.append(measurement)
 
+            else: 
+                self.drone_measurement_list.append(measurement)
 
+        return self.drone_measurement_list, self.manual_measurement_list
 
-    def remove_from_measurement_list(self, m):
-        self.measurement_list.remove(m)
 
 
 
@@ -200,45 +244,56 @@ class Project():
             with open(save_dir, "wb") as f:
                 pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as ex:
-            print("Error during pickling object (Possibly unsupported):", ex)
+            print("Error during pickling project object (Possibly unsupported):", ex)
 
 
 
 
     def overview(self, master_obj):
-        measurement_names = self.get_measurement_names()
-        overview_window, select_lst = self.Gui.make_project_overview_window(measurement_names, self)
+        overview_window, drone_lst, manual_lst = self.Gui.make_project_overview_window(self.drone_measurement_list, self.manual_measurement_list, self)
 
-        self.UiHandler.handle_measurement_overview(overview_window, select_lst, self, master_obj)
+        self.UiHandler.handle_measurement_overview(overview_window, drone_lst, manual_lst, self, master_obj)
 
 
 
 
     def calc_displacement(self, subseq_measurement):
-        init_measurement = self.measurement_list[0]
 
-        init_measurement.sort_points()
-        subseq_measurement.sort_points()
+        if isinstance(subseq_measurement, DroneMeasurement): 
+            init_measurement = self.drone_measurement_list[0]     
 
-        init_targets = init_measurement.target_points
-        subseq_targets = subseq_measurement.target_points
+            init_targets = init_measurement.target_points
+            subseq_targets = subseq_measurement.target_points
 
 
-        for init_target, subseq_target in zip(init_targets, subseq_targets):
-            dx = subseq_target.x - init_target.x
-            dy = subseq_target.y - init_target.y
-            dz = subseq_target.z - init_target.z
+            for init_target, subseq_target in zip(init_targets, subseq_targets):
+                dx = subseq_target.x - init_target.x
+                dy = subseq_target.y - init_target.y
+                dz = subseq_target.z - init_target.z
 
-            subseq_target.set_displacement(dx, dy, dz)
+                dabs = np.linalg.norm([dx, dy, dz])
+
+                subseq_target.set_displacement(dx, dy, dz, dabs)
+
+        else:   # is Manual measurement
+            init_measurement = self.manual_measurement_list[0]    
+
+            for init_point, subseq_point in zip(init_measurement.target_points, subseq_measurement.target_points):
+               # convert strings to float 
+                init = float(init_point.measured_distance)
+                subseq = float(subseq_point.measured_distance)
+
+
+                displacement = init - subseq
+                #displacement = str(displacement)
+                subseq_point.set_displacement(displacement)
 
         
 
 
 
-
     def calc_distance_to_origin(self, subseq_measurement):
         # calculate the absolute distance between every target and the origin
-        origin = self.measurement_list[0].ref_points[0]
         subseq_targets = subseq_measurement.target_points
 
         for target in subseq_targets:
@@ -247,36 +302,25 @@ class Project():
 
 
 
-    def plot_displacement(self, subseq_measurement):
-        init_measurement = self.measurement_list[0]
 
-        init_targets = init_measurement.target_points
+    def plot_displacement(self, subseq_measurement):
+        init_measurement = self.drone_measurement_list[0]
+
         subseq_targets = subseq_measurement.target_points
 
-        self.Gui.show_displacement(init_targets, subseq_targets)
-
+        self.Gui.show_displacement(subseq_targets)
 
 
 
 
     def visualize_displacement(self, measurement):
 
-        init_measurement = self.measurement_list[0]
-        ref_points = self.measurement_list[0].ref_points
+        init_measurement = self.drone_measurement_list[0]
+        ref_points = self.drone_measurement_list[0].ref_points
 
         self.visualize_points(init_measurement.target_points, ref_points, measurement.target_points)
 
-        
 
-        
-    def get_measurement_names(self):
-        measurement_names = []
-        for measurement in self.measurement_list:
-            measurement_names.append(measurement.name)
-
-            
-        return measurement_names
-            
 
 
 
@@ -287,44 +331,53 @@ class Project():
                 return "{:.2f}".format(1000*point.displacement[coord])
             
             except Exception as ex:
-                print(ex)
                 return "-"
-            
         
-        def get_abs_displacement(point):
-            try: 
-                eulcid_d = np.linalg.norm([get_displacement(point, 0), get_displacement(point, 1), get_displacement(point, 2)])
-                return "{:.2f}".format(eulcid_d)
-
-            except: 
-                return "-"
-
-        dump_dir = self.dir + "/" + self.name + ".xlsx"
-
-        # Create a workbook and add a worksheet.
-        workbook = xlsxwriter.Workbook(dump_dir)
-        worksheet = workbook.add_worksheet()
-
-        big = workbook.add_format()
-        big.set_font_size(30)
-
-        # Write project title
-        worksheet.write(0,1, self.name, big)
-
-        # initial value to calculate first block start
-        block_end = 2
 
 
-        # set column width for readability
-        worksheet.set_column_pixels(1, 1, 91)
-        worksheet.set_column_pixels(5, 5, 130)
+        def make_manual_measurement_block(worksheet, measurement, align_center, align_center_rotate, block_end):
+            # calculate the length and position of each measurement block 
+            block_start = block_end + 2
+            block_end = block_start + 5 + len(measurement.target_points)
 
-        for count, measurement in enumerate(self.measurement_list):
-            # rotate text for merged columns
-            align_center_rotate = workbook.add_format({"align" : "center"})
-            align_center_rotate.set_rotation(90)
-            align_center = workbook.add_format({"align" : "center"})
+            # merge vertical measurement title block
+            merging_cells_m = "A" + str(block_start) + ":A" + str(block_end)
+            worksheet.merge_range(merging_cells_m, measurement.name, align_center_rotate)
 
+            # merging measured distance cells
+            merging_cells_d = "C" + str(block_start) + ":F" + str(block_start)
+            worksheet.merge_range(merging_cells_d, "this is a placehoder", align_center)
+
+
+            # making column titles
+            col_titles = ["Marker Name", "Gemessene Distanz zur Basisplatte (mm)"]
+            
+            for count, element in enumerate(col_titles):
+                worksheet.write(block_start-1, 1+count, element, align_center)
+
+            # make rows of target distances
+            row_count = 0
+            for target in  measurement.target_points:
+                
+                # merging measured distance cells
+                merging_cells_k = "C" + str(block_start+row_count+1) + ":F" + str(block_start+row_count+1)
+                worksheet.merge_range(merging_cells_k, "this is a placehoder", align_center)
+
+
+
+                row = [target.name, 
+                       target.measured_distance]
+                
+                for col_count, element in enumerate(row):
+                    worksheet.write(block_start+row_count, 1+col_count, element, align_center)
+
+                row_count += 1
+
+            return block_end
+
+
+
+        def make_drone_measurement_block(worksheet, measurement, align_center, align_center_rotate, block_end):
             # calculate the length and position of each measurement block 
             block_start = block_end + 2
             block_end = block_start + 5 + len(measurement.target_points)
@@ -342,18 +395,18 @@ class Project():
 
             # making column titles
             col_titles = ["Marker Name", "x", "y", "z", "Distanz zu Ursprung", "dx", "dy", "dz", "dabs"]
-            
+                
             for count, element in enumerate(col_titles):
                 worksheet.write(block_start, 1+count, element, align_center)
-            
+                
             # make rows of reference points
             for row_count, point in enumerate(measurement.ref_points):
                 dist_origin = np.linalg.norm(point.get_pos())
                 row = [point.name, 
-                    "{:.2f}".format(point.x*1000), # x-coord
-                    "{:.2f}".format(point.y*1000), # y-coord
-                    "{:.2f}".format(point.z*1000), # z-coord
-                    "{:.2f}".format(dist_origin*1000),  # euclidian distance to origin
+                        "{:.2f}".format(point.x*1000), # x-coord
+                        "{:.2f}".format(point.y*1000), # y-coord
+                        "{:.2f}".format(point.z*1000), # z-coord
+                        "{:.2f}".format(dist_origin*1000),  # euclidian distance to origin
                         "-", "-", "-", "-"]                  # displacements 
 
                 for col_count, element in enumerate(row):
@@ -371,18 +424,130 @@ class Project():
                     get_displacement(point, 0),
                     get_displacement(point, 1),
                     get_displacement(point, 2),
-                    get_abs_displacement(point)]
-                
+                    get_displacement(point, 3)]
+                    
 
                 for col_count, element in enumerate(row):
                     worksheet.write(block_start+row_count+4, 1+col_count, element, align_center)
 
-        workbook.close()
+            return block_end
+
+
+
+        def make_xlsx_file(self, dump_dir):
+            # Create a workbook and add a worksheet.
+            workbook = xlsxwriter.Workbook(dump_dir)
+            worksheet = workbook.add_worksheet()
+
+            big = workbook.add_format()
+            big.set_font_size(30)
+
+            # Write project title
+            worksheet.write(0,1, self.name, big)
+
+            # initial value to calculate first block start
+            block_end = 2
+
+
+            # set column width for readability
+            worksheet.set_column_pixels(1, 1, 91)
+            worksheet.set_column_pixels(5, 5, 130)
+
+            for count, measurement in enumerate(self.all_measurement_list):
+                # rotate text for merged columns
+                align_center_rotate = workbook.add_format({"align" : "center"})
+                align_center_rotate.set_rotation(90)
+                align_center_rotate.set_align("vcenter")
+                align_center = workbook.add_format({"align" : "center"})
+
+                if isinstance(measurement, DroneMeasurement):
+                    block_end = make_drone_measurement_block(worksheet, measurement, align_center, align_center_rotate, block_end)
+                
+                else: 
+                    block_end = make_manual_measurement_block(worksheet, measurement, align_center, align_center_rotate, block_end)
+
+
+                
+            workbook.close()
+
+
+
+
+        dump_dir = self.dir + "/" + self.name + ".xlsx"
+
+        # checks if an existing file is opened/writeable
+        if os.path.exists(dump_dir):
+            while True:
+                try: 
+                    open(dump_dir, "a")
+                    # continues when file is writable
+                    break
+                
+                except Exception as ex:
+                    # raises popup when file is not writable
+                    retry_or_return = self.UiHandler.handle_open_file(ex, self.name + ".xlsx")
+
+                    if retry_or_return == "Cancel":
+                        # exit without writing file
+                        return
+                    else: 
+                        # starts next iteration to try open file
+                        continue
+                
+        make_xlsx_file(self, dump_dir)
+
+            
+
+       
+
+    def dump_pdf(self, dump_dir):        
+        from pdfGenerator import PdfGenerator
+
+        new_pdf = PdfGenerator()
+        doc = new_pdf.setup_doc(dump_dir, self.location)
+        
+        for measurement in self.all_measurement_list:
+
+            if isinstance(measurement, DroneMeasurement):
+                new_pdf.make_drone_measurement_table(measurement, doc)
+                doc = new_pdf.insert_drone_measuremtnt(measurement.date, doc)
+
+            else: # manual measurement
+                new_pdf.make_manual_measurement_table(measurement, doc)
+                doc = new_pdf.insert_manual_measuremtnt(measurement.date, doc)
+                    
+            
+
+
+        # checks if an existing file is opened/writeable
+        if os.path.exists(dump_dir):
+            while True:
+                try: 
+                    open(dump_dir, "a")
+                    # continues when file is writable
+                    break
+                
+                except Exception as ex:
+                    # raises popup when file is not writable
+                    retry_or_return = self.UiHandler.handle_open_file(ex, self.name + ".pdf")
+
+                    if retry_or_return == "Cancel":
+                        # exit without writing file
+                        return
+                    else: 
+                        # starts next iteration to try open file
+                        continue
+                
+        new_pdf.dump(doc)
+
+        return new_pdf
+
 
 
 
 
     def delete_directory(self):
+        
         def try_to_delete(el):
             print("deleting.... " + el)
             try:
@@ -432,7 +597,7 @@ class Project():
             if event == "-CANCEL-":
                     warning_win.close()
                     break
-                
+                    
             
 
 
@@ -444,9 +609,9 @@ class Project():
             char = "A"
             self.init_char = ord(char [0])
             
-            # initialize target list with one element (flag+label)
-            self.flags = [None]
-            self.labels = [None]
+            # initialize target list with first element
+            #              set,  visible, label
+            self.dict_ = [[False, True,   None ]]
 
         
         def make_current_marker_character(self, target_num):

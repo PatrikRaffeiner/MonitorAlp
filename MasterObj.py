@@ -16,7 +16,8 @@ class MasterObj():
 
 
         except Exception as ex:
-                print("Error during unpickling object (Possibly unsupported):", ex)
+                print("Error during unpickling master object (Possibly unsupported):", ex)
+
 
     def set_project_list(self, project_list):
         self.project_list = project_list
@@ -24,6 +25,7 @@ class MasterObj():
     
     def set_RC_dir(slef, RC_dir):
         slef.RC_dir = RC_dir
+
 
     def unset_RC_dir(self):
         self.RC_dir = None
@@ -35,4 +37,4 @@ class MasterObj():
                 pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         
         except Exception as ex:
-            print("Error during pickling object (Possibly unsupported):", ex)
+            print("Error during pickling master object (Possibly unsupported):", ex)

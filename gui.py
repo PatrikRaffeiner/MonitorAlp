@@ -109,7 +109,8 @@ class GUI():
         layout_browse_folder = [
             [sg.Column(project_path)],
             [sg.Column(image_path)],
-            [sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True), sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
+            [sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True),
+             sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
  
 
         # create measurement setup window
@@ -117,6 +118,26 @@ class GUI():
 
         return measurement_setup_window
     
+
+
+
+
+    def make_manual_measurement_input_window(self, project):
+        manual_measurement_layout = [
+            [sg.Text(getText("manMeas_txt_desc"))]]
+        
+        for target_name in project.target_list.labels:
+            manual_measurement_layout.append([sg.Text(target_name), sg.In(size=(25,1), default_text="z.B. 125.6", enable_events=True, key=("-TARGET-", target_name))])
+                
+        manual_measurement_layout.append([sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True), 
+             sg.Button(getText("cancel_btn"), key="-CANCEL-")])
+
+
+        # create manual measurement input window
+        measurement_setup_window = sg.Window(getText("manMeas_win_title"), manual_measurement_layout)
+
+        return measurement_setup_window
+
 
 
 
@@ -149,7 +170,7 @@ class GUI():
 
 
     def make_licence_browse_win(self):
-        # 
+
         input_path = [
             [sg.Text(getText("lic_txt_file")),
             sg.In(size=(25,1), enable_events= True, key="-FILE-"),
@@ -224,7 +245,9 @@ class GUI():
             [sg.HSeparator()],
             [sg.HSeparator()],
             [sg.Col([self.marker_row(target_list, 0)], key="-TARGET SECTION-")],
-            [sg.Button(getText("mrk_btn_add"), key="-ADD-"), sg.Push(), sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True)]]
+            [sg.Button(getText("mrk_btn_add"), key="-ADD-"), 
+             sg.Push(), 
+             sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True)]]
         
         # create marker input window
         marker_input_window = sg.Window(getText("mrk_win_title"), layout_marker_input, metadata=0)
@@ -244,8 +267,9 @@ class GUI():
 
             marker_input_row = [sg.pin(sg.Col([
                     [sg.Text(instruction_text)],
-                    [sg.Text(text),
-                    sg.In(size=(25,1), default_text="z.B. 1x12:020", enable_events= True, key=("-TARGET-", target_num))]]))]
+                    [sg.B("x", border_width=0, button_color=("red", sg.theme_background_color()), k=('-DELETE-', target_num), tooltip='Delete this item'),
+                    sg.Text(text),
+                    sg.In(size=(25,1), default_text="z.B. 1x12:020", enable_events= True, key=("-TARGET-", target_num))]], key=("-ROW-", target_num)))]
 
             return marker_input_row    
         
@@ -253,34 +277,43 @@ class GUI():
 
 
 
-    def make_project_overview_window(self, measurement_names, project):
+    def make_project_overview_window(self, drone_measurements, manual_measurements, project):
 
-        select_lst = sg.Listbox(measurement_names, size=(35,10), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=True, key="-SELECT-")
-        out_lst = sg.Listbox("", size=(25,10), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=False, key="-OUTPUT-")
+        drone_measurement_names = [drone_measurement.name for drone_measurement in drone_measurements]
+        manual_measurement_names = [manual_measurement.name for manual_measurement in manual_measurements]
+
+        drone_lst = sg.Listbox(drone_measurement_names, size=(35,15), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=True, key="-DRONE_SELECT-")
+        manual_lst = sg.Listbox(manual_measurement_names, size=(35,15), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=True, key="-MANUAL_SELECT-")
+        out_lst = sg.Listbox("", size=(35,20), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=False, key="-OUTPUT-")
+
 
         tooltip_del = getText("meas_tip_del") 
 
-        layout = [[sg.Text(getText("meas_txt_meas") , font=("Arial Bold", 14)), 
-                   sg.Push(),  
-                   sg.Text(getText("meas_txt_measInfo") , size=(21,1), font=("Arial Bold", 14))], 
-                  [select_lst, out_lst], 
-                  [Btn_10(getText("meas_btn_add"), key="-ADD-"), 
-                   sg.Push(), 
+        layout = [[sg.Text(getText("meas_txt_drone") , font=("Arial Bold", 14)), 
+                   sg.Push(),
+                   sg.Text(getText("meas_txt_manual") , font=("Arial Bold", 14)), 
+                   sg.Push(),   
+                   sg.Text(getText("meas_txt_measInfo") , size=(36,1), font=("Arial Bold", 14))], 
+                  [drone_lst, manual_lst, out_lst], 
+                  [Btn_10(getText("meas_btn_add"), key="-ADD_DRONE-", disabled=True),  
                    sg.Button(getText("meas_btn_calc"), disabled=True, key="-CALC-"),
+                   sg.Button(getText("meas_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL_DRONE-", tooltip=tooltip_del),
+                   sg.Text("",size=(20,1)),
+                   Btn_10(getText("meas_btn_add"), key="-ADD_MANUAL-", disabled=True),
+                   sg.Button(getText("meas_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL_MANUAL-", tooltip=tooltip_del), 
                    sg.Push(), 
-                   #sg.Button("Duplicate Measurement", disabled=True, key="-DUPL-", button_color=("black","OliveDrab3")), # remove this line
-                   #sg.Push(),                                                       # remove this line
-                   sg.Button(getText("meas_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL-", tooltip=tooltip_del)]]
+                   sg.Button("Dump PDF", disabled=True, key="-DUMP-", button_color=("black","OliveDrab3")), # remove this line
+                   ]]
         
         overview_window = sg.Window(project.name + getText("meas_win_title"), layout)
 
-        return overview_window, select_lst
-
+        return overview_window, drone_lst, manual_lst
+    
         
 
 
 
-    def show_displacement(self, init_targets, subseq_targets):
+    def show_displacement(self, subseq_targets):
         name_size = 10
         di_size = 9
 
@@ -291,14 +324,12 @@ class GUI():
                    Txt_10("abs (mm)", size=(di_size,1)),
                    Txt_10(getText("disp_txt_dist"), size=(di_size*2,1))]]
         
-        for init_target, subseq_target in zip(init_targets, subseq_targets):
-            
-            abs_dist = np.linalg.norm(subseq_target.pos-init_target.pos)
+        for subseq_target in subseq_targets:
 
             dx = "{:.2f}".format(1000*subseq_target.displacement[0])
             dy = "{:.2f}".format(1000*subseq_target.displacement[1])
             dz = "{:.2f}".format(1000*subseq_target.displacement[2])
-            abs_dist = "{:.2f}".format(1000*abs_dist)
+            abs_dist = "{:.2f}".format(1000*subseq_target.displacement[3])
             dist_to_orig = "{:.2f}".format(1000*subseq_target.distance_from_origin)
 
             layout.append([Txt_10(subseq_target.name,size=(name_size,1)), 
@@ -327,7 +358,7 @@ class GUI():
 
         recent_projects = sg.Listbox(project_names, size=(40,10), font=("Arial Bold", 14), 
                                      expand_y=True, expand_x=True, enable_events=True, 
-                                     key="-SELECT-")
+                                     key="-PROJECT_SELECT-")
 
         layout = [[sg.Text(getText("pjlist_txt_pjcts"))],
                   [recent_projects],
@@ -338,7 +369,7 @@ class GUI():
         load_win = sg.Window(getText("pjlist_win_title"), layout, finalize=True)
 
         # Add the ability to double-click an element
-        load_win["-SELECT-"].bind('<Double-Button-1>' , "+-double click-")
+        load_win["-PROJECT_SELECT-"].bind('<Double-Button-1>' , "+-double click-")
 
         return load_win, recent_projects
 
@@ -379,11 +410,24 @@ class GUI():
 
         return warn_window
 
+    
+
+    @classmethod
+    def popup_window(cls, text_ID):
+
+        popup_layout = [
+            [sg.Text(getText(text_ID), font=("Arial", 12), text_color="black")]]
+        
+        popup_window = sg.Window("", popup_layout, keep_on_top=True, finalize=True)
+
+        return popup_window
+
+
 
 
 
     @classmethod
-    def make_warning_window(cls, warning_str):
+    def warning_window(cls, warning_str):
         
         # change window layout
         sg.theme("DarkRed1")
@@ -392,7 +436,7 @@ class GUI():
             [sg.Text(warning_str, font=("Arial", 22), text_color="black")],
             [sg.Button(getText("acknowl_btn"), key="-ACKNOWLEDGE-"), sg.Push(), sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
         
-        warn_window = sg.Window(getText("warn_btn"), warning_layout, keep_on_top=True, finalize=True)
+        warn_window = sg.Window(getText("warn_btn"), warning_layout, finalize=True)
 
         # change theme back to original for subsequent windows
         sg.theme(cls.theme)
@@ -402,7 +446,7 @@ class GUI():
 
 
     @classmethod    
-    def popup(cls, ID, location):
+    def non_blocking_popup(cls, ID, location):
 
         p1 = location[0]
         p2 = location[1] - 100

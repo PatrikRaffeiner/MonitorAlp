@@ -6,7 +6,7 @@ import re
 
 # local imports
 from gui import *
-
+from measurement import DroneMeasurement, ManualMeasurement
 
 class UIhandler():
     def handle_project_setup(self, project_setup_window, master_obj):
@@ -74,7 +74,6 @@ class UIhandler():
                 name = location
 
                 # set project members from UI
-                print(location, RC_path, licence_flag, name)
                 return location, RC_path, licence_flag, name
 
 
@@ -86,7 +85,6 @@ class UIhandler():
                 return True
             
         return False
-
 
 
 
@@ -146,12 +144,6 @@ class UIhandler():
                 else:
                     self.dye_background("red", measurement_setup_window["-IMGFOLDER-"])
                     self.create_popup_above("init_pop_img", measurement_setup_window, "-IMGFOLDER-")
-                    '''measurement_setup_window["-IMGFOLD, ER-"].update(background_color="red")
-                    loc = measurement_setup_window.CurrentLocation()
-                    gui.popup("init_pop_img", loc)
-                    measurement_setup_window.force_focus()
-                    measurement_setup_window["-IMGFOLDER-"].SetFocus()'''
-                    #threading.Thread(target=wait, args=(4, popup_win), daemon=True).start()
                     image_flag = False
 
             if event == "-PRJFOLDER-":
@@ -170,7 +162,7 @@ class UIhandler():
                     
                     # create non-blocking pop up window with explanation
                     loc = measurement_setup_window.CurrentLocation()
-                    gui.popup("init_pop_projcet", loc)
+                    gui.non_blocking_popup("init_pop_projcet", loc)
                     measurement_setup_window.force_focus()
                     measurement_setup_window["-IMGFOLDER-"].SetFocus()
 
@@ -208,7 +200,7 @@ class UIhandler():
                 else:
                     measurement_setup_window["-IMGFOLDER-"].update(background_color="red")
                     loc = measurement_setup_window.CurrentLocation()
-                    gui.popup("init_pop_img", loc)
+                    gui.non_blocking_popup("init_pop_img", loc)
                     measurement_setup_window.force_focus()
                     measurement_setup_window["-IMGFOLDER-"].SetFocus()
                     #threading.Thread(target=wait, args=(2, popup_win), daemon=True).start()
@@ -218,6 +210,51 @@ class UIhandler():
                 measurement_setup_window.close()                
                 return imgfolder
             
+
+
+
+    def get_manual_measurement_distances(self, manual_measurement_window, project):
+
+        accept = manual_measurement_window["-CONTINUE-"]
+
+        # dictionary for manual measurements
+        manual_measurement_dict = {}
+
+
+        # event loop measurement setup
+        while True:
+            event, values = manual_measurement_window.read()
+
+            # End if window is closed
+            if event == "-CANCEL-" or event == sg.WIN_CLOSED:
+                manual_measurement_window.close()
+                break
+            
+            # listener for every target marker, including added targets
+            if event[0] == "-TARGET-":
+                target = {}
+
+                target[event[1]] = values[('-TARGET-', event[1])]
+                manual_measurement_dict.update(target)
+
+            #print(manual_measurement_dict)
+
+
+            if len(manual_measurement_dict) == len(project.target_list.labels):
+                accept.update(disabled = False)
+
+            if event == "-CONTINUE-": 
+                # convert distance input (str) into float
+                distances = [*manual_measurement_dict.values()]
+                targets = [*manual_measurement_dict.keys()]
+
+                manual_measurement_dict.clear()
+
+                for target, distance in zip(targets, distances):
+                    manual_measurement_dict.update({target : float(distance)})
+
+                return manual_measurement_dict
+
 
 
 
@@ -312,6 +349,7 @@ class UIhandler():
         # event loop marker input
         while True:
             event, values = marker_input_window.read()
+
             # End if window is closed
             if event == "Cancel" or event == sg.WIN_CLOSED:
                 marker_input_window.close()
@@ -333,33 +371,54 @@ class UIhandler():
             # add additional target marker
             if event == "-ADD-":
                 marker_input_window.metadata += 1
-                marker_input_window.extend_layout(marker_input_window['-TARGET SECTION-'], [gui.marker_row(target_list,marker_input_window.metadata)])
+                marker_input_window.extend_layout(marker_input_window['-TARGET SECTION-'], 
+                                                  [gui.marker_row(target_list,marker_input_window.metadata)])
                 
                 # add empty elements to edit via input
-                target_list.flags.append(None)
-                target_list.labels.append(None)
+                target_list.dict_.append([False, True, None])
+
+
+            if event[0] == "-DELETE-":
+                # at least one target name must be entered
+                if len(target_list.dict_) > 1:
+                    # make clicked element invisible
+                    marker_input_window[("-ROW-", event[1])].update(visible=False)
+                    
+                    target_list.dict_[event[1]][1] = False
+
+
 
             # listener for every target marker, including added targets
             if event[0] == "-TARGET-":
-                for i in range(len(target_list.flags)):
-                    if event[1] == i:
+                target_list.dict_[event[1]][2] = values[("-TARGET-", event[1])]
+                target_list.dict_[event[1]][0] = True
+
                         
-                        target_list.labels[i] = values[("-TARGET-", i)]
-                        target_list.flags[i] = True
-
-
+                        
             # get user input on refence distance
             if event == "-DIST-":
                 distance_flag, ref_distance = self.inspect_distance_input(values["-DIST-"], marker_input_window)
 
-            if orig_flag and horiz_falg and vert_flag and distance_flag and not any(label is None for label in target_list.flags):
+            active_and_set =[]
+            for target in target_list.dict_:
+                if target[1] == True:
+                    active_and_set.append(target[0])
+
+
+            if orig_flag and horiz_falg and vert_flag and distance_flag and not any(set is False for set in active_and_set):
                 okay.update(disabled =False)
             else:
                 okay.update(disabled=True)
 
             if event == "-CONTINUE-":
                 marker_input_window.close()
-                                    
+                target_list.labels = []
+
+                for target in target_list.dict_:
+                    if target[0] and target[1]:
+                        target_list.labels.append(target[2])
+
+               
                 return [origin_marker, horizontal_marker, vertical_marker], target_list.labels, ref_distance
 
 
@@ -422,7 +481,7 @@ class UIhandler():
                 return False
     
                     
-            if event == "-SELECT-":
+            if event == "-PROJECT_SELECT-":
                 # gets the selected element from the recent project list
                 project_name = recent_projects.get()[0]
                 load_btn.update(disabled=False)  
@@ -433,13 +492,14 @@ class UIhandler():
                 # find project in project list based on selected name
                 selected_project = next((p for p in project_list if p.name == project_name), None)
                 load_window.close()
+
                 return selected_project
             
             if event == "-DEL-":
                 # find project in project list based on selected name
                 selected_project = next((p for p in project_list if p.name == project_name), None)
 
-                warn_window = GUI.make_warning_window(getText("meas_del_warn"))
+                warn_window = GUI.warning_window(getText("meas_del_warn"))
 
                 while True:
                     event, values = warn_window.read()
@@ -454,7 +514,7 @@ class UIhandler():
                         project_list.remove_project(selected_project)
 
                         project_names = project_list.get_names()
-                        load_window["-SELECT-"].update(project_names)
+                        load_window["-PROJECT_SELECT-"].update(project_names)
 
                         project_list.save()
 
@@ -466,9 +526,9 @@ class UIhandler():
                         return
                 
             
-            if event == "-SELECT-+-double click-":
+            if event == "-PROJECT_SELECT-+-double click-":
                 # find project in project list based on double clicked element 
-                project_name = values["-SELECT-"][0]
+                project_name = values["-PROJECT_SELECT-"][0]
                 selected_project = next((p for p in project_list if p.name == project_name), None)
                 load_window.close()
                 return selected_project
@@ -476,11 +536,14 @@ class UIhandler():
                 
 
 
-    def handle_measurement_overview(self, overview_window, select_lst, project, master_obj):
+    def handle_measurement_overview(self, overview_window, select_lst, manual_lst, project, master_obj):
         
         calc_btn = overview_window["-CALC-"]
-        remove_btn = overview_window["-DEL-"]
-        # duplicate_btn = overview_window["-DUPL-"]   # remove this line
+        del_drone_btn = overview_window["-DEL_DRONE-"]
+        del_manual_btn = overview_window["-DEL_MANUAL-"]
+        add_drone_btn = overview_window["-ADD_DRONE-"]
+        add_manual_btn = overview_window["-ADD_MANUAL-"]
+        dump_btn = overview_window["-DUMP-"]   # remove this line
 
         tooltip_del = getText("meas_tip_nodel")
 
@@ -493,70 +556,127 @@ class UIhandler():
                 break
 
             # show attributes of selected element/measurement
-            if event ==  "-SELECT-": 
-                # get name of selected item/measurement
-                meas_name = select_lst.get()[0]
-                                
-                # find object with measurement name and return object
-                selected_measurement = next((m for m in project.measurement_list if m.name == meas_name), None)
-                overview_window["-OUTPUT-"].update([getText("meas_txt_loc"), selected_measurement.location, "", 
-                                           getText("meas_txt_d&t"), selected_measurement.date, selected_measurement.time, "",
-                                           getText("meas_txt_refM"), selected_measurement.ref_marker_names[0], 
-                                           selected_measurement.ref_marker_names[1], 
-                                           selected_measurement.ref_marker_names[2],"", 
-                                           getText("meas_txt_trgtM"), selected_measurement.target_marker_names[0], 
-                                           selected_measurement.target_marker_names[1],
-                                           selected_measurement.target_marker_names[2],""])
-                
-                # enable diaplacement calculation button when selected measurement is not initial measurement 
-                if selected_measurement != project.measurement_list[0]:
+            if event ==  "-DRONE_SELECT-": 
+                selected_measurement = self.get_selected_measurement(select_lst, project)
+
+                # unselect measurement from other (manual) list
+                overview_window["-MANUAL_SELECT-"].update(set_to_index=[])
+
+                # visualize drone measurement info in output list
+                selected_measurement.show_measurement_info(overview_window)
+
+                # enable/disable correct buttons to add a measurement 
+                add_drone_btn.update(disabled = False)
+                dump_btn.update(disabled = False) # remove this line
+                add_manual_btn.update(disabled = True)
+                del_manual_btn.update(disabled = True)
+
+
+                # enable buttons diaplacement calculation, remove measurement and 
+                # dump pdf when selected measurement is not initial measurement 
+                if selected_measurement != project.drone_measurement_list[0]:
                     calc_btn.update(disabled = False)
-                    remove_btn.update(disabled = False)
-                    # duplicate_btn.update(disabled = False) # remove this line
-                    overview_window["-DEL-"].TooltipObject.text = getText("meas_txt_measInfo")
+                    del_drone_btn.update(disabled = False)
+                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_delInfo")
 
                 
                 else: 
                     calc_btn.update(disabled = True)
-                    remove_btn.update(disabled = True)
-                    overview_window["-DEL-"].TooltipObject.text = tooltip_del
+                    del_drone_btn.update(disabled = True)
+                    overview_window["-DEL_DRONE-"].TooltipObject.text = tooltip_del
 
 
+            if event == "-MANUAL_SELECT-":
+                selected_measurement = self.get_selected_measurement(manual_lst, project)
 
-            if event == "-ADD-":
-                measurement = project.create_measurement(init_status=False)
-                project.RC_registration_and_save_points(measurement, master_obj.RC_dir)
-                measurement.transform_points()
-                measurement.sort_points()
-                project.add_to_measurement_list(measurement)
-                project.calc_displacement(measurement)
-                project.calc_distance_to_origin(measurement)
+                # unselect measurement from other (drone) list
+                overview_window["-DRONE_SELECT-"].update(set_to_index=[])
+
+                # visualize manual measurement info in output list
+                selected_measurement.show_measurement_info(overview_window)
+
+                # enable/disable correct buttons to add a measurement 
+                add_drone_btn.update(disabled = True)
+                calc_btn.update(disabled = True)
+                del_drone_btn.update(disabled = True)
+
+                add_manual_btn.update(disabled = False)
+                dump_btn.update(disabled = False) # remove this line
+
+                # enable remove measurement when selected measurement is not initial measurement 
+                if selected_measurement != project.manual_measurement_list[0]:
+                    del_manual_btn.update(disabled = False)
+                
+                else:
+                    del_manual_btn.update(disabled = True)
                 
 
-                measurement.visualize_points()
-                measurement.save()
+
+            if event == "-ADD_DRONE-":
+                
+                # in case reality capture crashed due to any circumstances
+                # directory is completle removed 
+                try:
+                    drone_measurement = project.create_drone_measurement(init_status=False)
+                    project.RC_registration_and_save_points(drone_measurement, master_obj.RC_dir)
+ 
+                    drone_measurement.transform_points()
+                except:
+                    drone_measurement.delete_directory()
+                    print("deleting: " + drone_measurement.dir + " because something went wron in RC")
+                    return
+                drone_measurement.sort_points()
+                project.drone_measurement_list.append(drone_measurement)
+                project.all_measurement_list.append(drone_measurement)
+                project.calc_displacement(drone_measurement)
+                project.calc_distance_to_origin(drone_measurement)
+                drone_measurement.check_limits()
+                drone_measurement.pdf = project.dump_pdf(drone_measurement.dir+".pdf")
+                
+
+                drone_measurement.visualize_points()
+                drone_measurement.save()
                 project.save()
-                #project_list.append(project)
                 master_obj.save()
 
                 project.dump_xlsx_file()
 
-                measurement_names = project.get_measurement_names()
-                overview_window["-SELECT-"].update(measurement_names)
+                drone_measurement_names =  [m.name for m in project.drone_measurement_list]
+                overview_window["-DRONE_SELECT-"].update(drone_measurement_names)
+                
                 overview_window.force_focus()
 
 
+            if event == "-ADD_MANUAL-":
+                manual_measurement = project.create_manual_measurement()
+
+                project.calc_displacement(manual_measurement)
+                manual_measurement.check_limits()
+                project.manual_measurement_list.append(manual_measurement)
+                project.all_measurement_list.append(manual_measurement)
+
+                manual_measurement.pdf = project.dump_pdf(manual_measurement.dir+".pdf")
+                project.save()
+                master_obj.save()
+
+                project.dump_xlsx_file()
+
+                manual_measurement_names = [m.name for m in project.manual_measurement_list]
+                overview_window["-MANUAL_SELECT-"].update(manual_measurement_names)
+
+
+
             if event == "-CALC-":
-                project.calc_displacement(selected_measurement)
-                project.calc_distance_to_origin(selected_measurement)
+                # no need to actually calculate the displacement
+                # only show the already calculated
                 project.plot_displacement(selected_measurement)
                 project.visualize_displacement(selected_measurement)
                 
 
 
-            if event == "-DEL-":
+            if event == "-DEL_DRONE-":
                 # make popup window to check for validity
-                warn_window = GUI.make_warning_window(getText("meas_del_warn"))
+                warn_window = GUI.warning_window(getText("meas_del_warn"))
 
                 while True:
                     event, values = warn_window.read()
@@ -568,10 +688,12 @@ class UIhandler():
 
                     if event == "-ACKNOWLEDGE-":
                         selected_measurement.delete_directory()
-                        project.remove_from_measurement_list(selected_measurement)
+                        project.drone_measurement_list.remove(selected_measurement)
+                        project.all_measurement_list.remove(selected_measurement)
 
-                        measurement_names = project.get_measurement_names()
-                        overview_window["-SELECT-"].update(measurement_names)
+                        drone_measurement_names = [drone_measurement.name for drone_measurement in project.drone_measurement_list]
+        
+                        overview_window["-DRONE_SELECT-"].update(drone_measurement_names)
 
                         project.save()
                         master_obj.save()
@@ -583,16 +705,43 @@ class UIhandler():
                         warn_window.close()
                         
 
-            # uncomment to handle input of duplicate button 
-            # if event == "-DUPL-":
-            #     project.add_to_measurement_list(selected_measurement)
-            #     project.save()
-            #     project_list.save()
 
-            #     measurement_names = project.get_measurement_names()
-            #     overview_window["-SELECT-"].update(measurement_names)
+            if event == "-DEL_MANUAL-":
+                # make popup window to check validity 
+                warn_window = GUI.warning_window(getText("meas_del_warn"))
+
+                while True: 
+                    event, values = warn_window.read()
+
+                    # End if window is closed
+                    if event == sg.WIN_CLOSED:
+                        warn_window.close()
+                        break
+
+                    if event == "-CANCEL-":
+                        warn_window.close()
+
+                    if event == "-ACKNOWLEDGE-":
+                        project.manual_measurement_list.remove(selected_measurement)
+                        project.all_measurement_list.remove(selected_measurement)
+
+                        manual_measurement_names = [manual_measurement.name for manual_measurement in project.manual_measurement_list]
+
+                        overview_window["-MANUAL_SELECT-"].update(manual_measurement_names)
+
+                        project.save()
+                        master_obj.save()
+                        project.dump_xlsx_file()
+
+                        warn_window.close()
+
+                                                 
+
+            #uncomment to handle input of duplicate button 
+            if event == "-DUMP-":
+                project.dump_pdf(selected_measurement.dir+".pdf")
                 
-
+                
 
 
     def dye_background(self, bg_color, element_to_dye):
@@ -604,21 +753,31 @@ class UIhandler():
     def create_popup_above(self, textID, current_win, element):
         gui = GUI()
         loc = current_win.CurrentLocation()
-        gui.popup(textID, loc)
+        gui.non_blocking_popup(textID, loc)
         current_win.force_focus()
         current_win[element].SetFocus()
 
 
+    
+
+    def handle_open_file(self, error, file_name):
+
+        pop_win = sg.popup_ok_cancel(getText("pjct_pop_nowritepre") + file_name + 
+                                   getText("pjct_pop_nowritepost"))
+        print(error)
+
+        return pop_win
 
 
-# timer to sleep for passed time
-def wait(time, popup_win):
-    current_time = 0 
-    while current_time <= time:
-        popup_win["-KEY-"].SetFocus()
-        sleep(1)
-        current_time += 1
-    del popup_win
-    return 
+
+
+    def get_selected_measurement(self, lst, project):
+        # get name of selected item/measurement
+        meas_name = lst.get()[0]
+                        
+        # find object with measurement name and return object
+        selected_measurement = next((m for m in project.all_measurement_list if m.name == meas_name), None)
+        
+        return selected_measurement
 
 
