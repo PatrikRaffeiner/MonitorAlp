@@ -37,16 +37,16 @@ while True:
         
     # initial measurement mode
     if event == "-START-":
-        new_project = Project()
+            new_project = Project()
 
         # catch closed setup window and return to home
-        try: 
+        #try: 
             new_project.setup(master_obj)
             init_drone_measurement = new_project.create_drone_measurement(init_status=True)
             init_manual_measurement = new_project.create_manual_measurement()
 
 
-            new_project.RC_registration_and_save_points(init_drone_measurement, master_obj.RC_dir)
+            new_project.RC_registration_and_export_points(init_drone_measurement, master_obj.RC_dir)
             
             # in case reality capture crashed due to any circumstances
             try: 
@@ -64,6 +64,7 @@ while True:
             
             
             new_project.calc_distance_to_origin(init_drone_measurement)
+            new_project.calc_accuracy_indicator(init_drone_measurement)
 
             project_list.append(new_project)
             master_obj.save()
@@ -74,17 +75,21 @@ while True:
 
             new_project.dump_xlsx_file()
 
-        except Exception as ex:
+            new_project.confirm_measurement_added()
+
+
+
+        #except Exception as ex:
     
-            print("Error during measurement processing:", ex)
-            continue
+            #print("Error during measurement processing:", ex)
+            #continue
         
         
 
     # load project mode
     if event == "-LOAD-":
         while True:
-            project = project_list.select_project()
+            project = project_list.select_project(master_obj)
 
             # case is no recent project is in project list
             # popup is handeled in line above (select_project) 
@@ -92,12 +97,12 @@ while True:
                 break
         
             if project != None:
-                try:
-                    project.overview(master_obj)
+                #try:
+                project.overview(master_obj)
 
-                except Exception as ex:
-                    print("Error during loading:", ex)
-                    break
+                #except Exception as ex:
+                #    print("Error during loading:", ex)
+                #    break
 
     # handle global language selection
     if values["-LANG-"] == "DE":

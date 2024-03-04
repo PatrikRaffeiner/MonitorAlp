@@ -258,7 +258,7 @@ class GUI():
 
 
 
-    def marker_row(self,target_list, target_num):
+    def marker_row(self, target_list, target_num):
             curr_char = target_list.make_current_marker_character(target_num)
 
             text = getText("mrk_txt") + curr_char
@@ -282,9 +282,9 @@ class GUI():
         drone_measurement_names = [drone_measurement.name for drone_measurement in drone_measurements]
         manual_measurement_names = [manual_measurement.name for manual_measurement in manual_measurements]
 
-        drone_lst = sg.Listbox(drone_measurement_names, size=(35,15), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=True, key="-DRONE_SELECT-")
-        manual_lst = sg.Listbox(manual_measurement_names, size=(35,15), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=True, key="-MANUAL_SELECT-")
-        out_lst = sg.Listbox("", size=(35,20), font=("Arial Bold", 14), expand_y=True, expand_x=True, enable_events=False, key="-OUTPUT-")
+        drone_lst = sg.Listbox(drone_measurement_names, size=(35,15), font=("Arial Bold", 14), key="-DRONE_SELECT-", expand_y=True, enable_events=True, horizontal_scroll=True)
+        manual_lst = sg.Listbox(manual_measurement_names, size=(35,15), font=("Arial Bold", 14), key="-MANUAL_SELECT-" , expand_y=True,  enable_events=True, horizontal_scroll=True)
+        out_lst = sg.Listbox("", size=(35,20), font=("Arial Bold", 14), key="-OUTPUT-", expand_y=True, enable_events=False, horizontal_scroll=True)
 
 
         tooltip_del = getText("meas_tip_del") 
@@ -297,9 +297,11 @@ class GUI():
                   [drone_lst, manual_lst, out_lst], 
                   [Btn_10(getText("meas_btn_add"), key="-ADD_DRONE-", disabled=True),  
                    sg.Button(getText("meas_btn_calc"), disabled=True, key="-CALC-"),
+                   sg.Button(getText("meas_btn_comment"), key="-COMMENT_DRONE-", disabled=True),
                    sg.Button(getText("meas_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL_DRONE-", tooltip=tooltip_del),
-                   sg.Text("",size=(20,1)),
+                   sg.Text("",size=(14,1)),
                    Btn_10(getText("meas_btn_add"), key="-ADD_MANUAL-", disabled=True),
+                   sg.Button(getText("meas_btn_comment"), key="-COMMENT_MANUAL-", disabled=True),
                    sg.Button(getText("meas_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL_MANUAL-", tooltip=tooltip_del), 
                    sg.Push(), 
                    sg.Button("Dump PDF", disabled=True, key="-DUMP-", button_color=("black","OliveDrab3")), # remove this line
@@ -375,6 +377,22 @@ class GUI():
 
 
 
+
+    def edit_comment(self, current_comment):
+        edit_comment_layout = [
+                    [sg.Text(getText("meas_btn_comment"))],
+                    [sg.Multiline(size=(45,5), default_text=current_comment, enable_events= True, key="-COMMENT-", expand_x=True)],
+                    [sg.Button(getText("continue_btn"), key="-OK-"), sg.Push(), sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
+        
+        # create marker input window
+        marker_input_window = sg.Window(getText("mrk_win_title"), edit_comment_layout)
+        
+        return marker_input_window
+
+        
+
+
+
     @classmethod
     def make_delete_warning(cls, related, not_related):
         # change window layout
@@ -425,7 +443,6 @@ class GUI():
 
 
 
-
     @classmethod
     def warning_window(cls, warning_str):
         
@@ -446,12 +463,12 @@ class GUI():
 
 
     @classmethod    
-    def non_blocking_popup(cls, ID, location):
+    def non_blocking_popup(cls, ID, location, colorTheme):
 
         p1 = location[0]
         p2 = location[1] - 100
         location = (p1, p2)
-        sg.theme('DarkRed1')
+        sg.theme(colorTheme)
         pop_window = sg.popup_non_blocking(getText(ID), no_titlebar=True, 
                                            auto_close=True, location=location,
                                            auto_close_duration=4.5, 

@@ -162,7 +162,7 @@ class UIhandler():
                     
                     # create non-blocking pop up window with explanation
                     loc = measurement_setup_window.CurrentLocation()
-                    gui.non_blocking_popup("init_pop_projcet", loc)
+                    gui.non_blocking_popup("init_pop_projcet", loc, "DarkRed1")
                     measurement_setup_window.force_focus()
                     measurement_setup_window["-IMGFOLDER-"].SetFocus()
 
@@ -200,7 +200,7 @@ class UIhandler():
                 else:
                     measurement_setup_window["-IMGFOLDER-"].update(background_color="red")
                     loc = measurement_setup_window.CurrentLocation()
-                    gui.non_blocking_popup("init_pop_img", loc)
+                    gui.non_blocking_popup("init_pop_img", loc, "DarkRed1")
                     measurement_setup_window.force_focus()
                     measurement_setup_window["-IMGFOLDER-"].SetFocus()
                     #threading.Thread(target=wait, args=(2, popup_win), daemon=True).start()
@@ -331,7 +331,7 @@ class UIhandler():
 
 
 
-    def get_marker_names(self, gui, marker_input_window, target_list):
+    def get_marker_names(self, gui, marker_input_window, project_target_list):
 
         okay = marker_input_window["-CONTINUE-"]
 
@@ -372,26 +372,26 @@ class UIhandler():
             if event == "-ADD-":
                 marker_input_window.metadata += 1
                 marker_input_window.extend_layout(marker_input_window['-TARGET SECTION-'], 
-                                                  [gui.marker_row(target_list,marker_input_window.metadata)])
+                                                  [gui.marker_row(project_target_list,marker_input_window.metadata)])
                 
                 # add empty elements to edit via input
-                target_list.dict_.append([False, True, None])
+                project_target_list.dict_.append([False, True, None])
 
 
             if event[0] == "-DELETE-":
                 # at least one target name must be entered
-                if len(target_list.dict_) > 1:
+                if len(project_target_list.dict_) > 1:
                     # make clicked element invisible
                     marker_input_window[("-ROW-", event[1])].update(visible=False)
                     
-                    target_list.dict_[event[1]][1] = False
+                    project_target_list.dict_[event[1]][1] = False
 
 
 
             # listener for every target marker, including added targets
             if event[0] == "-TARGET-":
-                target_list.dict_[event[1]][2] = values[("-TARGET-", event[1])]
-                target_list.dict_[event[1]][0] = True
+                project_target_list.dict_[event[1]][2] = values[("-TARGET-", event[1])]
+                project_target_list.dict_[event[1]][0] = True
 
                         
                         
@@ -400,7 +400,7 @@ class UIhandler():
                 distance_flag, ref_distance = self.inspect_distance_input(values["-DIST-"], marker_input_window)
 
             active_and_set =[]
-            for target in target_list.dict_:
+            for target in project_target_list.dict_:
                 if target[1] == True:
                     active_and_set.append(target[0])
 
@@ -412,14 +412,14 @@ class UIhandler():
 
             if event == "-CONTINUE-":
                 marker_input_window.close()
-                target_list.labels = []
+                project_target_list.labels = []
 
-                for target in target_list.dict_:
+                for target in project_target_list.dict_:
                     if target[0] and target[1]:
-                        target_list.labels.append(target[2])
+                        project_target_list.labels.append(target[2])
 
                
-                return [origin_marker, horizontal_marker, vertical_marker], target_list.labels, ref_distance
+                return [origin_marker, horizontal_marker, vertical_marker], project_target_list.labels, ref_distance
 
 
 
@@ -468,7 +468,7 @@ class UIhandler():
         
 
 
-    def select_from_project_list(self, load_window, recent_projects, project_list):
+    def select_from_project_list(self, load_window, recent_projects, project_list, master_obj):
         load_btn = load_window["-LOAD-"]
         delete_btn = load_window["-DEL-"]
 
@@ -509,14 +509,13 @@ class UIhandler():
                         warn_window.close()
                         break
 
-                    if event == "-ACKNOWLEDGE-":
-                        selected_project.delete_directory()
+                    if event == "-ACKNOWLEDGE-" and selected_project.delete_directory():
                         project_list.remove_project(selected_project)
 
                         project_names = project_list.get_names()
                         load_window["-PROJECT_SELECT-"].update(project_names)
 
-                        project_list.save()
+                        master_obj.save()
 
                         warn_window.close()
                         return
@@ -544,6 +543,8 @@ class UIhandler():
         add_drone_btn = overview_window["-ADD_DRONE-"]
         add_manual_btn = overview_window["-ADD_MANUAL-"]
         dump_btn = overview_window["-DUMP-"]   # remove this line
+        comment_drone_btn = overview_window["-COMMENT_DRONE-"]  
+        comment_manual_btn = overview_window["-COMMENT_MANUAL-"]  
 
         tooltip_del = getText("meas_tip_nodel")
 
@@ -570,6 +571,9 @@ class UIhandler():
                 dump_btn.update(disabled = False) # remove this line
                 add_manual_btn.update(disabled = True)
                 del_manual_btn.update(disabled = True)
+                comment_drone_btn.update(disabled = False)
+                comment_manual_btn.update(disabled = True)
+
 
 
                 # enable buttons diaplacement calculation, remove measurement and 
@@ -586,6 +590,7 @@ class UIhandler():
                     overview_window["-DEL_DRONE-"].TooltipObject.text = tooltip_del
 
 
+
             if event == "-MANUAL_SELECT-":
                 selected_measurement = self.get_selected_measurement(manual_lst, project)
 
@@ -599,7 +604,8 @@ class UIhandler():
                 add_drone_btn.update(disabled = True)
                 calc_btn.update(disabled = True)
                 del_drone_btn.update(disabled = True)
-
+                comment_drone_btn.update(disabled = True)
+                comment_manual_btn.update(disabled = False)
                 add_manual_btn.update(disabled = False)
                 dump_btn.update(disabled = False) # remove this line
 
@@ -618,7 +624,7 @@ class UIhandler():
                 # directory is completle removed 
                 try:
                     drone_measurement = project.create_drone_measurement(init_status=False)
-                    project.RC_registration_and_save_points(drone_measurement, master_obj.RC_dir)
+                    project.RC_registration_and_export_points(drone_measurement, master_obj.RC_dir)
  
                     drone_measurement.transform_points()
                 except:
@@ -628,8 +634,11 @@ class UIhandler():
                 drone_measurement.sort_points()
                 project.drone_measurement_list.append(drone_measurement)
                 project.all_measurement_list.append(drone_measurement)
+
                 project.calc_displacement(drone_measurement)
                 project.calc_distance_to_origin(drone_measurement)
+                project.calc_accuracy_indicator(drone_measurement)
+                
                 drone_measurement.check_limits()
                 drone_measurement.pdf = project.dump_pdf(drone_measurement.dir+".pdf")
                 
@@ -645,6 +654,9 @@ class UIhandler():
                 overview_window["-DRONE_SELECT-"].update(drone_measurement_names)
                 
                 overview_window.force_focus()
+
+                project.confirm_measurement_added()
+
 
 
             if event == "-ADD_MANUAL-":
@@ -663,6 +675,8 @@ class UIhandler():
 
                 manual_measurement_names = [m.name for m in project.manual_measurement_list]
                 overview_window["-MANUAL_SELECT-"].update(manual_measurement_names)
+
+                project.confirm_measurement_added()
 
 
 
@@ -739,8 +753,74 @@ class UIhandler():
 
             #uncomment to handle input of duplicate button 
             if event == "-DUMP-":
+                project.calc_accuracy_indicator(selected_measurement)
                 project.dump_pdf(selected_measurement.dir+".pdf")
                 
+                
+
+
+            if event == "-COMMENT_DRONE-":
+                current_comment = selected_measurement.comment  
+                new_comment = current_comment
+
+                gui = GUI()
+                comment_win = gui.edit_comment(current_comment)
+
+                while True: 
+                    event, values = comment_win.read()
+
+                    # end when window is closed
+                    if event == sg.WIN_CLOSED:
+                        break
+
+                    if event == "-COMMENT-":
+                        new_comment = values["-COMMENT-"]
+
+                    if event == "-CANCEL-":
+                        comment_win.close()
+                        break
+
+                    if event == "-OK-":
+                        selected_measurement.comment = new_comment
+                        comment_win.close()
+                        master_obj.save()
+
+                        # updating the output column
+                        selected_measurement.show_measurement_info(overview_window)
+                        break
+
+
+            
+            if event == "-COMMENT_MANUAL-":
+                current_comment = selected_measurement.comment  
+                new_comment = current_comment
+
+                gui = GUI()
+                comment_win = gui.edit_comment(current_comment)
+
+                while True: 
+                    event, values = comment_win.read()
+
+                    # end when window is closed
+                    if event == sg.WIN_CLOSED:
+                        break
+
+                    if event == "-COMMENT-":
+                        new_comment = values["-COMMENT-"]
+
+                    if event == "-CANCEL-":
+                        comment_win.close()
+                        break
+
+                    if event == "-OK-":
+                        selected_measurement.comment = new_comment
+                        comment_win.close()
+                        master_obj.save()
+
+                        # updating the output column
+                        selected_measurement.show_measurement_info(overview_window)
+                        break
+
                 
 
 
@@ -753,7 +833,7 @@ class UIhandler():
     def create_popup_above(self, textID, current_win, element):
         gui = GUI()
         loc = current_win.CurrentLocation()
-        gui.non_blocking_popup(textID, loc)
+        gui.non_blocking_popup(textID, loc, "DarkRed1")
         current_win.force_focus()
         current_win[element].SetFocus()
 

@@ -55,7 +55,7 @@ class ProjectList(list):
 
 
 
-    def select_project(self):
+    def select_project(self, master_obj):
         gui = GUI()
         uiHandler = UIhandler()
 
@@ -63,14 +63,14 @@ class ProjectList(list):
         if len(project_names) == 0:
             w, h = sg.Window.get_screen_size()
 
-            popup_win = gui.non_blocking_popup("pop_txt_nopjct", [w/2-50, h/2 +50])
+            popup_win = gui.non_blocking_popup("pop_txt_nopjct", [w/2-50, h/2 +50], 'DarkRed1')
 
 
             return False
 
         else: 
             load_window, recent_projects = gui.make_project_list_window(project_names)
-            selected_project = uiHandler.select_from_project_list(load_window, recent_projects, self)
+            selected_project = uiHandler.select_from_project_list(load_window, recent_projects, self, master_obj)
 
             return selected_project
 

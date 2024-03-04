@@ -197,31 +197,40 @@ class PdfGenerator():
 
 
 
-   def insert_drone_measuremtnt(self, measurement_date, doc):
+   def insert_drone_measuremtnt(self, measurement, doc):
       # add spacer between previous measurement/title and next measurement
       self.story.append(Spacer(1, cm))
       
       # add measurement (table) to the document
-      sub_ttl = Paragraph("Drohnen-Messung vom <br/> " + measurement_date, self.subHeadingStyle)
+      sub_ttl = Paragraph("Drohnen-Messung vom <br/> " + measurement.date, self.subHeadingStyle)
       
-      
+      # adding error margin and user comments below table
       self.story.append(sub_ttl)
       self.story.append(self.table)
+      self.story.append(Spacer(1, .5*cm))
+      self.story.append(Paragraph("Ungenauigkeit:  " + str("{:.2f}".format(measurement.accuracy_score*1000) + " mm" )))
+      self.story.append(Paragraph("Kommentar:" ))
+      for line in measurement.comment.splitlines():
+         self.story.append(Paragraph(line)) 
       self.story.append(Spacer(1, .5*cm))
 
       return doc
    
 
-   def insert_manual_measuremtnt(self, measurement_date, doc):
+   def insert_manual_measuremtnt(self, measurement, doc):
       # add spacer between previous measurement/title and next measurement
       self.story.append(Spacer(1, cm))
       
       # add measurement (table) to the document
-      sub_ttl = Paragraph("Manuelle Messung vom <br/> " + measurement_date, self.subHeadingStyle)
-      
-      
+      sub_ttl = Paragraph("Manuelle Messung vom <br/> " + measurement.date, self.subHeadingStyle)
+
+      # adding error margin and user comments below table
       self.story.append(sub_ttl)
       self.story.append(self.table)
+      self.story.append(Spacer(1, .5*cm))
+      self.story.append(Paragraph("Kommentar:" ))
+      for line in measurement.comment.splitlines():
+         self.story.append(Paragraph(line)) 
       self.story.append(Spacer(1, .5*cm))
 
       return doc
@@ -293,6 +302,7 @@ def draw_status_label(canvas, doc):
    except: # no status if initial measurmenet
       status = ""
       label_color = colors.white
+
 
 
 

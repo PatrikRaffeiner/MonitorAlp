@@ -1,6 +1,7 @@
 import subprocess
 from adjustText import adjust_text
 import xlsxwriter
+import math
 
 # local imports 
 from measurement import *
@@ -39,9 +40,18 @@ class Project():
             measurement_setup_window = self.Gui.make_init_measurement_setup_win()
             imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui, self.name)
 
-            marker_input_window = self.Gui.make_marker_input_window(self.target_list)
-            self.reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
+            '''uncomment for agile version'''
+            # marker_input_window = self.Gui.make_marker_input_window(self.target_list)
+            # self.reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
             
+            '''comment out for agile version'''
+            self.reference_list = ["1x12:01a", "1x12:01b", "1x12:01c"]
+            target_list = ["1x12:011", "1x12:015", "1x12:026"]
+            self.target_list.labels = target_list
+            ref_dist = "0.1200"
+
+            self.accuracy_indication_list = ["1x12:01f", "1x12:01d"]
+            self.accuracy_indication_true_length = 0.084853    # m
 
         else: # additional measurement
             measurement_setup_window = self.Gui.make_measurement_setup_win()
@@ -66,9 +76,11 @@ class Project():
         new_measurement = None
 
         while new_measurement == None:
+            # wrapper for parallel 
             pop_up.perform_long_operation(lambda: DroneMeasurement(self.location,
                                                                    self.reference_list,
                                                                    target_list,
+                                                                   self.accuracy_indication_list,
                                                                    self, 
                                                                    ref_dist, 
                                                                    imgs_dir),
@@ -103,7 +115,7 @@ class Project():
 
 
 
-    def RC_registration_and_save_points(self, measurement, RC_dir):
+    def RC_registration_and_export_points(self, measurement, RC_dir):
         # path to save control points (measurement points)
         measurement.controlPoint_path = measurement.dir + "/controlPoints.csv"
 
@@ -117,15 +129,14 @@ class Project():
         save_path = measurement.dir + "/" + measurement.name + ".rcproj"
 
 
-        # run RealityCapture, detect markers, define reference distance, export 3D-point-cooridnates 
+        # run RealityCapture, detect markers, define reference distance, export 3D-point-cooridnates         
         result = subprocess.run(
             [RC_dir, 
             "-addFolder", measurement.img_path, 
-            "-align", 
             "-detectMarkers", 
             "-defineDistance", origin, refMarkerX, measurement.ref_distance, 
             "-defineDistance", origin, refMarkerZ, measurement.ref_distance,
-            "-update",
+            "-align",
             "-exportGroundControlPoints", measurement.controlPoint_path,
             "-save", save_path,
             "-quit"])
@@ -300,6 +311,18 @@ class Project():
             dist = np.linalg.norm(target.get_pos())
             target.set_distance_from_origin(dist)
 
+    
+
+
+    def calc_accuracy_indicator(self, measurement):
+        accuracy_indication_points = measurement.accuracy_indication_points
+        
+        calculated_accuracy_indication_length = math.dist(accuracy_indication_points[0].get_pos(),
+                                                          accuracy_indication_points[1].get_pos())
+
+        measurement.accuracy_score = abs(calculated_accuracy_indication_length-self.accuracy_indication_true_length)
+        
+
 
 
 
@@ -319,7 +342,6 @@ class Project():
         ref_points = self.drone_measurement_list[0].ref_points
 
         self.visualize_points(init_measurement.target_points, ref_points, measurement.target_points)
-
 
 
 
@@ -498,7 +520,6 @@ class Project():
 
             
 
-       
 
     def dump_pdf(self, dump_dir):        
         from pdfGenerator import PdfGenerator
@@ -510,11 +531,11 @@ class Project():
 
             if isinstance(measurement, DroneMeasurement):
                 new_pdf.make_drone_measurement_table(measurement, doc)
-                doc = new_pdf.insert_drone_measuremtnt(measurement.date, doc)
+                doc = new_pdf.insert_drone_measuremtnt(measurement, doc)
 
             else: # manual measurement
                 new_pdf.make_manual_measurement_table(measurement, doc)
-                doc = new_pdf.insert_manual_measuremtnt(measurement.date, doc)
+                doc = new_pdf.insert_manual_measuremtnt(measurement, doc)
                     
             
 
@@ -541,7 +562,6 @@ class Project():
         new_pdf.dump(doc)
 
         return new_pdf
-
 
 
 
@@ -580,25 +600,32 @@ class Project():
             # End if window is closed
             if event == sg.WIN_CLOSED:
                 warning_win.close()
-                break
+                return False
 
             if event == "-RMVALL-":
                 for element in dir_list:
                     try_to_delete(element)
-                    warning_win.close()
-                    break
+                warning_win.close()
+                return True
                     
             if event == "-RMHIGH-":
                 for element in from_project:
                     try_to_delete(element)
-                    warning_win.close()
-                break
+                warning_win.close()
+                return True
             
             if event == "-CANCEL-":
-                    warning_win.close()
-                    break
+                warning_win.close()
+                return False
                     
             
+
+
+    def confirm_measurement_added(self):
+        w, h = sg.Window.get_screen_size()
+
+        GUI.non_blocking_popup("meas_pop_added", [w/2-50, h/2 +50], 'Green')
+        sg.theme(GUI.theme)
 
 
 
