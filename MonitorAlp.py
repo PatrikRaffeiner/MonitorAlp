@@ -37,10 +37,10 @@ while True:
         
     # initial measurement mode
     if event == "-START-":
-            new_project = Project()
+        new_project = Project()
 
         # catch closed setup window and return to home
-        #try: 
+        try: 
             new_project.setup(master_obj)
             init_drone_measurement = new_project.create_drone_measurement(init_status=True)
             init_manual_measurement = new_project.create_manual_measurement()
@@ -64,7 +64,6 @@ while True:
             
             
             new_project.calc_distance_to_origin(init_drone_measurement)
-            new_project.calc_accuracy_indicator(init_drone_measurement)
 
             project_list.append(new_project)
             master_obj.save()
@@ -79,10 +78,10 @@ while True:
 
 
 
-        #except Exception as ex:
+        except Exception as ex:
     
-            #print("Error during measurement processing:", ex)
-            #continue
+            print("Error during measurement processing:", ex)
+            continue
         
         
 
@@ -97,12 +96,8 @@ while True:
                 break
         
             if project != None:
-                #try:
                 project.overview(master_obj)
 
-                #except Exception as ex:
-                #    print("Error during loading:", ex)
-                #    break
 
     # handle global language selection
     if values["-LANG-"] == "DE":

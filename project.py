@@ -41,17 +41,17 @@ class Project():
             imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui, self.name)
 
             '''uncomment for agile version'''
-            # marker_input_window = self.Gui.make_marker_input_window(self.target_list)
-            # self.reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
+            marker_input_window = self.Gui.make_marker_input_window(self.target_list)
+            self.reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
             
             '''comment out for agile version'''
-            self.reference_list = ["1x12:01a", "1x12:01b", "1x12:01c"]
-            target_list = ["1x12:011", "1x12:015", "1x12:026"]
-            self.target_list.labels = target_list
-            ref_dist = "0.1200"
+            # self.reference_list = ["1x12:01a", "1x12:01b", "1x12:01c"]
+            # target_list = ["1x12:011", "1x12:015", "1x12:026"]
+            # self.target_list.labels = target_list
+            # ref_dist = "0.1200"
 
-            self.accuracy_indication_list = ["1x12:01f", "1x12:01d"]
-            self.accuracy_indication_true_length = 0.084853    # m
+            # self.accuracy_indication_list = ["1x12:01f", "1x12:01d"]
+            # self.accuracy_indication_true_length = 0.084853    # m
 
         else: # additional measurement
             measurement_setup_window = self.Gui.make_measurement_setup_win()
@@ -80,7 +80,6 @@ class Project():
             pop_up.perform_long_operation(lambda: DroneMeasurement(self.location,
                                                                    self.reference_list,
                                                                    target_list,
-                                                                   self.accuracy_indication_list,
                                                                    self, 
                                                                    ref_dist, 
                                                                    imgs_dir),

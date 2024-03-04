@@ -113,16 +113,14 @@ class Measurement(ABC):
 class DroneMeasurement(Measurement):
     # extending the constructor of the parent class (Measurement)
     def __init__(self, location, ref_marker_names, target_marker_names,
-                 accuracy_indication_names, project, ref_dist, orig_img_path):
+                 project, ref_dist, orig_img_path):
         
         super().__init__(location, ref_marker_names, target_marker_names, project)
         self.ref_distance = ref_dist
         self.copy_imgs(orig_img_path)
 
         self.ref_points = []
-        self.accuracy_indication_points = []
 
-        self.accuracy_indication_names = accuracy_indication_names
 
 
 
@@ -180,10 +178,6 @@ class DroneMeasurement(Measurement):
         for target_marker_name in self.target_marker_names:
             pnt = next((point for point in self.points if point.name == target_marker_name))
             self.target_points.append(pnt)
-
-        for indicator_marker_name in self.accuracy_indication_names:
-            pnt = next((point for point in self.points if point.name == indicator_marker_name))
-            self.accuracy_indication_points.append(pnt)
 
     
 
@@ -384,7 +378,7 @@ class ManualMeasurement(Measurement):
         # measurement dir is the project dir + measurement name 
         # the manual measurement name is labelled with a # at the end of the name
         self.dir = self.dir[:-1]
-        
+
         return self.dir
         
 

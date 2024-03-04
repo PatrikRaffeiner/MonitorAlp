@@ -753,7 +753,6 @@ class UIhandler():
 
             #uncomment to handle input of duplicate button 
             if event == "-DUMP-":
-                project.calc_accuracy_indicator(selected_measurement)
                 project.dump_pdf(selected_measurement.dir+".pdf")
                 
                 
