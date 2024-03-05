@@ -637,7 +637,6 @@ class UIhandler():
 
                 project.calc_displacement(drone_measurement)
                 project.calc_distance_to_origin(drone_measurement)
-                project.calc_accuracy_indicator(drone_measurement)
                 
                 drone_measurement.check_limits()
                 drone_measurement.pdf = project.dump_pdf(drone_measurement.dir+".pdf")
