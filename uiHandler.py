@@ -3,6 +3,7 @@ import os
 import threading
 from time import sleep 
 import re
+import subprocess
 
 # local imports
 from gui import *
@@ -545,8 +546,7 @@ class UIhandler():
         dump_btn = overview_window["-DUMP-"]   # remove this line
         comment_drone_btn = overview_window["-COMMENT_DRONE-"]  
         comment_manual_btn = overview_window["-COMMENT_MANUAL-"]  
-
-        tooltip_del = getText("meas_tip_nodel")
+        open_RC_btn = overview_window["-OPEN_RC-"]
 
         while True:
             event, values = overview_window.read()
@@ -573,21 +573,28 @@ class UIhandler():
                 del_manual_btn.update(disabled = True)
                 comment_drone_btn.update(disabled = False)
                 comment_manual_btn.update(disabled = True)
+                open_RC_btn.update(disabled = False)
 
 
 
                 # enable buttons diaplacement calculation, remove measurement and 
                 # dump pdf when selected measurement is not initial measurement 
-                if selected_measurement != project.drone_measurement_list[0]:
-                    calc_btn.update(disabled = False)
-                    del_drone_btn.update(disabled = False)
-                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_delInfo")
+                if selected_measurement == project.drone_measurement_list[0]:
+                    calc_btn.update(disabled = True)
+                    del_drone_btn.update(disabled = True)
+
+                    # set tooltips of drone and manual measurement delete button
+                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_nodel") # "cannot delete init measurement"
+                    overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_del")  # "Please select the measurement to delete"
 
                 
                 else: 
-                    calc_btn.update(disabled = True)
-                    del_drone_btn.update(disabled = True)
-                    overview_window["-DEL_DRONE-"].TooltipObject.text = tooltip_del
+                    calc_btn.update(disabled = False)
+                    del_drone_btn.update(disabled = False)
+
+                    # set tooltips of drone and manual measurement delete button
+                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_delInfo")  # "Removes selected measurement irreversibly"
+                    overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_del")     # "Please select the measurement to delete"         
 
 
 
@@ -610,11 +617,20 @@ class UIhandler():
                 dump_btn.update(disabled = False) # remove this line
 
                 # enable remove measurement when selected measurement is not initial measurement 
-                if selected_measurement != project.manual_measurement_list[0]:
-                    del_manual_btn.update(disabled = False)
+                if selected_measurement == project.manual_measurement_list[0]:
+                    del_manual_btn.update(disabled = True)
+                    
+                    # set tooltips of drone and manual measurement delete button
+                    overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_nodel") # "cannot delete init measurement"
+                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_del")  # "Please select the measurement to delete"
+
                 
                 else:
-                    del_manual_btn.update(disabled = True)
+                    del_manual_btn.update(disabled = False)
+                    
+                    # set tooltips of drone and manual measurement delete button
+                    overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_delInfo")  # "Removes selected measurement irreversibly"
+                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_del")     # "Please select the measurement to delete"  
                 
 
 
@@ -749,13 +765,11 @@ class UIhandler():
 
                         warn_window.close()
 
-                                                 
+                                                  
 
             #uncomment to handle input of duplicate button 
             if event == "-DUMP-":
-                project.calc_accuracy_indicator(selected_measurement)
-                project.dump_pdf(selected_measurement.dir+".pdf")
-                
+                project.dump_pdf(selected_measurement.dir+".pdf")                
                 
 
 
@@ -822,6 +836,15 @@ class UIhandler():
                         break
 
                 
+            
+            if event == "-OPEN_RC-":
+                load_dir = selected_measurement.dir + "/" + selected_measurement.name + ".rcproj"
+                # run RealityCapture and load saved measurement
+                result = subprocess.run(
+                    [master_obj.RC_dir, 
+                    "-load", load_dir
+                    ])
+
 
 
     def dye_background(self, bg_color, element_to_dye):

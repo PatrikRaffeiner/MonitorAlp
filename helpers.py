@@ -116,6 +116,7 @@ class TextReadOut(ABC):
             "meas_btn_add" : ["Add", "Hinzufügen"],
             "meas_btn_calc" : ["Displacement", "Verschiebung"],
             "meas_btn_comment" : ["Comment", "Kommentar"],
+            "meas_btn_openRC" : ["Open in RC", "In RC öffnen"],
             "meas_btn_del" : ["Delete", "Löschen"],
             "meas_win_title" : [" Measurement Overview", " Messung Übersicht"],
             "meas_txt_typeD" : [["Type:", "Drone"], ["Typ:", "Drohne"]],

@@ -298,6 +298,7 @@ class GUI():
                   [Btn_10(getText("meas_btn_add"), key="-ADD_DRONE-", disabled=True),  
                    sg.Button(getText("meas_btn_calc"), disabled=True, key="-CALC-"),
                    sg.Button(getText("meas_btn_comment"), key="-COMMENT_DRONE-", disabled=True),
+                   sg.Button(getText("meas_btn_openRC"), key="-OPEN_RC-", disabled=True),
                    sg.Button(getText("meas_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL_DRONE-", tooltip=tooltip_del),
                    sg.Text("",size=(14,1)),
                    Btn_10(getText("meas_btn_add"), key="-ADD_MANUAL-", disabled=True),
