@@ -234,10 +234,21 @@ class UIhandler():
             if event[0] == "-TARGET-":
                 target = {}
 
-                target[event[1]] = values[('-TARGET-', event[1])]
-                manual_measurement_dict.update(target)
+                # gets value from current input event (input of distinct target)
+                input_value = values[('-TARGET-', event[1])]
 
-            #print(manual_measurement_dict)
+                # inspects distance input and highlights input window when incorrect input is provided
+                # also highlights the background (red) if wrong format is provided
+                dist_flag, input_distance = self.inspect_distance_input(input_value, manual_measurement_window, ('-TARGET-', event[1]))
+                if dist_flag: 
+                    # correct input format provided, sets possible red background to white and stores value
+                    target[event[1]] = input_distance
+                    manual_measurement_dict.update(target)
+
+                else: 
+                    # wrong input provided, set background to red and with instructions
+                    manual_measurement_window.force_focus()
+                    manual_measurement_window[('-TARGET-', event[1])].SetFocus()
 
 
             if len(manual_measurement_dict) == len(project.target_list.labels):
@@ -396,8 +407,8 @@ class UIhandler():
                         
                         
             # get user input on refence distance
-            if event == "-DIST-":
-                distance_flag, ref_distance = self.inspect_distance_input(values["-DIST-"], marker_input_window)
+            if event == ("-DIST-"):
+                distance_flag, ref_distance = self.inspect_distance_input(values[("-DIST-")], marker_input_window, ("-DIST-"))
 
             active_and_set =[]
             for target in project_target_list.dict_:
@@ -424,7 +435,7 @@ class UIhandler():
 
 
 
-    def inspect_distance_input(self, input, marker_input_window):
+    def inspect_distance_input(self, input, input_window, args):
 
         def divide_string(string):
             # divide input string by 1000 (turn mm-string to m-string)
@@ -443,10 +454,10 @@ class UIhandler():
         # correct input format 
         if match:
             # clear the input line and set distance flag
-            marker_input_window["-DIST-"].update(background_color="white")
+            input_window[args].update(background_color="white")
 
             # clear tooltip
-            marker_input_window["-DIST-"].TooltipObject.text = ""
+            input_window[args].TooltipObject.text = ""
 
             distance_flag = True
 
@@ -457,10 +468,10 @@ class UIhandler():
 
         else:
             # highlight input line 
-            marker_input_window["-DIST-"].update(background_color="red")
+            input_window[args].update(background_color="red")
 
             # update tooltip with warning and correct format suggestion
-            marker_input_window["-DIST-"].TooltipObject.text = getText("mrk_tip_wrongdist")
+            input_window[args].TooltipObject.text = getText("mrk_tip_wrongdist")
             distance_flag = False
 
             return distance_flag, None

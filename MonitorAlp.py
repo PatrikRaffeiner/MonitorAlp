@@ -37,10 +37,10 @@ while True:
         
     # initial measurement mode
     if event == "-START-":
-        new_project = Project()
+            new_project = Project()
 
         # catch closed setup window and return to home
-        try: 
+        #try: 
             new_project.setup(master_obj)
             init_drone_measurement = new_project.create_drone_measurement(init_status=True)
             init_manual_measurement = new_project.create_manual_measurement()
@@ -51,22 +51,45 @@ while True:
             # in case reality capture crashed due to any circumstances
             try: 
                 init_drone_measurement.transform_points()
-            except:
-                init_drone_measurement.delete_directory()
-                print("deleting: " + init_drone_measurement.dir + " because RC crashed")
-                break
+            except Exception as ex:
+            #    init_drone_measurement.delete_directory()
+            #    print("deleting: " + init_drone_measurement.dir + " because RC crashed")
+            #    break
+                print("Error during point transformation")
+                print(ex)
             
-            init_drone_measurement.sort_points()
-            new_project.all_measurement_list.append(init_drone_measurement)
-            new_project.all_measurement_list.append(init_manual_measurement)
-            new_project.drone_measurement_list.append(init_drone_measurement)
-            new_project.manual_measurement_list.append(init_manual_measurement)
+            try: 
+                init_drone_measurement.sort_points()
+            except Exception as ex:
+                print("Error during point sorting")
+                print(ex)
             
+            try: 
+                new_project.all_measurement_list.append(init_drone_measurement)
+                new_project.all_measurement_list.append(init_manual_measurement)
+                new_project.drone_measurement_list.append(init_drone_measurement)
+                new_project.manual_measurement_list.append(init_manual_measurement)
+            except Exception as ex: 
+                print("error during list appending")
+                print(ex)
             
-            new_project.calc_distance_to_origin(init_drone_measurement)
+            try: 
+                new_project.calc_distance_to_origin(init_drone_measurement)
+            except Exception as ex: 
+                print("error during distance calculation")
+                print(ex)
 
-            project_list.append(new_project)
-            master_obj.save()
+            try: 
+                project_list.append(new_project)
+            except Exception as ex: 
+                print("error during project list appending")
+                print(ex)
+                
+            try: 
+                master_obj.save()
+            except Exception as ex: 
+                print("error during master object saving")
+                print(ex)
 
             init_drone_measurement.visualize_points()
             init_drone_measurement.save()
@@ -78,10 +101,10 @@ while True:
 
 
 
-        except Exception as ex:
+        #except Exception as ex:
     
-            print("Error during measurement processing:", ex)
-            continue
+            #print("Error during measurement processing:", ex)
+            #continue
         
         
 

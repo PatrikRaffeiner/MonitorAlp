@@ -170,8 +170,8 @@ class Project():
         
         # coordinate system points
         cp1 = [ax_len, 0, 0]
-        cp2 = [0, -ax_len, 0]
-        cp3 = [0, 0, -ax_len]
+        cp2 = [0, ax_len, 0]
+        cp3 = [0, 0, ax_len]
 
         # initial point coordinates
         x_i = []
@@ -188,10 +188,15 @@ class Project():
         # create figure 
         ax = plt.figure().add_subplot(projection='3d')
 
+        # Set the axis labels
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+
         # plot coordinate system
         ax.plot([origin.x,ax_len], [origin.y,0], [origin.z,0], "red")
-        ax.plot([origin.x,0], [origin.y,-ax_len], [origin.z,0], "green")
-        ax.plot([origin.x,0], [origin.y,0], [origin.z,-ax_len], "blue")
+        ax.plot([origin.x,0], [origin.y,ax_len], [origin.z,0], "green")
+        ax.plot([origin.x,0], [origin.y,0], [origin.z,ax_len], "blue")
 
         # plot coordinate points
         ax.scatter(0, 0, 0, c="black")
@@ -242,6 +247,9 @@ class Project():
         
         # equal axis for better visual representarion
         set_axes_equal(ax)
+
+        # Rotate view
+        ax.view_init(-170,-100,0)
 
         plt.show()
 

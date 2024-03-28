@@ -123,11 +123,15 @@ class GUI():
 
 
     def make_manual_measurement_input_window(self, project):
+        # tooltips
+        tip_man_dist = getText("mrk_tip_man_dist")
+
         manual_measurement_layout = [
             [sg.Text(getText("manMeas_txt_desc"))]]
         
         for target_name in project.target_list.labels:
-            manual_measurement_layout.append([sg.Text(target_name), sg.In(size=(25,1), default_text="z.B. 125.6", enable_events=True, key=("-TARGET-", target_name))])
+            manual_measurement_layout.append([sg.Text(target_name), 
+                                              sg.In(size=(25,1), default_text="z.B. 125.6", enable_events=True, tooltip=tip_man_dist, key=("-TARGET-", target_name))])
                 
         manual_measurement_layout.append([sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True), 
              sg.Button(getText("cancel_btn"), key="-CANCEL-")])
@@ -226,7 +230,7 @@ class GUI():
 
         ref_dist_layout = [
             [sg.Text(getText("mrk_txt_dist")),
-            sg.In(size=(25,1), default_text="z.B. 120.0", enable_events= True, tooltip=tip_dist, key="-DIST-")]]  
+            sg.In(size=(25,1), default_text="z.B. 120.0", enable_events= True, tooltip=tip_dist, key=("-DIST-"))]]  
         
 
         # set up marker input layout
@@ -265,6 +269,7 @@ class GUI():
 
             instruction_text = getText("mrk_txt_pre") + str(target_num+1) + getText("mrk_txt_post")
 
+    
             marker_input_row = [sg.pin(sg.Col([
                     [sg.Text(instruction_text)],
                     [sg.B("x", border_width=0, button_color=("red", sg.theme_background_color()), k=('-DELETE-', target_num), tooltip='Delete this item'),

@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod         # ABC = abstract class
 
 
 # local imports
-from helpers import read_csv, set_axes_equal
+from helpers import read_points_from_csv, set_axes_equal
 from gui import getText
 from points import ManualPoint
 
@@ -150,7 +150,7 @@ class DroneMeasurement(Measurement):
 
     def transform_points(self):
         # load point coordinates from exported csv file
-        raw_points = read_csv(self.controlPoint_path)
+        raw_points = read_points_from_csv(self.controlPoint_path)
 
         
         # shift all points to reference origin
@@ -165,16 +165,12 @@ class DroneMeasurement(Measurement):
     
 
     def sort_points(self):
-        # moved to init and parent class
-        # self.ref_points = []
-        # self.target_points = []
-
-
+        # sort reference points by checking the marker name (known reference marker names) 
         for ref_marker_name in self.ref_marker_names:
             pnt = next((point for point in self.points if point.name == ref_marker_name))
             self.ref_points.append(pnt)
 
-        
+        # sort target points by checking the marker name (known target marker names)
         for target_marker_name in self.target_marker_names:
             pnt = next((point for point in self.points if point.name == target_marker_name))
             self.target_points.append(pnt)
@@ -191,15 +187,15 @@ class DroneMeasurement(Measurement):
         
         originPoint = origin_points[0]
 
-        temp_x = originPoint.x
-        temp_y = originPoint.y
-        temp_z = originPoint.z
+        shift_x = originPoint.x
+        shift_y = originPoint.y
+        shift_z = originPoint.z
 
         # apply offset to shift reference point0 to origin (0,0,0)
         for pt in zeroed_points:
-            pt.x -= temp_x
-            pt.y -= temp_y
-            pt.z -= temp_z
+            pt.x -= shift_x
+            pt.y -= shift_y
+            pt.z -= shift_z
         
         return zeroed_points, originPoint
     
@@ -208,17 +204,16 @@ class DroneMeasurement(Measurement):
 
     def createRotationMatrix(self, zero_points, horizontalPoint_name, verticalPoint_name):
         # search point name of origin point 
-        verticalPoint = [point for point in zero_points if point.name == horizontalPoint_name] 
-        verticalPoint = verticalPoint[0]
-        horizontalPoint = [point for point in zero_points if point.name == verticalPoint_name] 
+        horizontalPoint = [point for point in zero_points if point.name == horizontalPoint_name] 
         horizontalPoint = horizontalPoint[0]
+        verticalPoint = [point for point in zero_points if point.name == verticalPoint_name] 
+        verticalPoint = verticalPoint[0]
 
         # create coordinate system at (reference) origin
-        e1 = np.array([verticalPoint.x, verticalPoint.y, verticalPoint.z])
+        e1 = np.array([horizontalPoint.x, horizontalPoint.y, horizontalPoint.z])
 
         e2 = np.cross([verticalPoint.x, verticalPoint.y, verticalPoint.z],
                     [horizontalPoint.x, horizontalPoint.y, horizontalPoint.z])
-        e2 = e2
 
         e3 = np.cross(e1,e2)
 
@@ -247,8 +242,8 @@ class DroneMeasurement(Measurement):
         
         # coordinate system points
         cp1 = [ax_len, 0, 0]
-        cp2 = [0, -ax_len, 0]
-        cp3 = [0, 0, -ax_len]
+        cp2 = [0, ax_len, 0]
+        cp3 = [0, 0, ax_len]
 
         # initial point coordinates
         xi_i = []
@@ -266,10 +261,15 @@ class DroneMeasurement(Measurement):
         fig = plt.figure()
         ax = fig.add_subplot(projection='3d')
 
+        # Set the axis labels
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+
         # plot coordinate system
         ax.plot([self.origin.x,ax_len], [self.origin.y,0], [self.origin.z,0], "red")
-        ax.plot([self.origin.x,0], [self.origin.y,-ax_len], [self.origin.z,0], "green")
-        ax.plot([self.origin.x,0], [self.origin.y,0], [self.origin.z,-ax_len], "blue")
+        ax.plot([self.origin.x,0], [self.origin.y,ax_len], [self.origin.z,0], "green")
+        ax.plot([self.origin.x,0], [self.origin.y,0], [self.origin.z, ax_len], "blue")
 
         # plot coordinate points
         ax.scatter(cp1[0], cp1[1], cp1[2], c="red")
@@ -283,6 +283,9 @@ class DroneMeasurement(Measurement):
         
         # equal axis for better visual representarion
         set_axes_equal(ax)
+
+        # Rotate view
+        ax.view_init(-170,-100,0)
 
         plt.show()
         
