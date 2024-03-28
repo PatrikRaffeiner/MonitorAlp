@@ -33,7 +33,7 @@ def set_axes_equal(ax):
 
 
 # function to read csv file and return list of control points
-def read_csv(controlPoint_path):
+def read_points_from_csv(controlPoint_path):
     points = []
     # read out exported point-coordinates
     with open(controlPoint_path) as csv_file:
@@ -92,7 +92,8 @@ class TextReadOut(ABC):
             "lic_text_desc" : ["Please find an existing licence or insert PIN to buy a licence for your images", "Bitte die Lizenz-Datei angeben oder PIN eingeben um Lizenz für verwendete Bilder zu erwerben"],
             "lic_txt_pay" : ["Pay", "Bezahlen"],
             "lic_win_title" : ["Browse Licence", "Lizenz Browse"],
-            "mrk_tip_dist" : ["Please provide the reference distance in the format: xxx.x", "Bitte eine Referenz-Distanz im Format xxx.x eingeben"],
+            "mrk_tip_dist" : ["Please provide the reference distance in millimeters inthe format: xxx.x", "Bitte eine Referenz-Distanz in Millimeter im Format xxx.x eingeben"],
+            "mrk_tip_man_dist" : ["Please provide the manually measured distance in millimeters in the format: xxx.x", "Bitte die gemessene Distanz in Milllimeter im Format xxx.x eingeben"],
             "mrk_tip_wrongdist" : ["Incorrect format, must be xxx.x", "Falsches Format, bitte im Format xxx.x eingeben"],
             "mrk_txt_orig" : ["Origin-marker name", "Name des Basis-Markers"],
             "mrk_txt_hrz" : ["Horizontal-marker name", "Name des horizontalen Markers"],

@@ -208,7 +208,6 @@ class PdfGenerator():
       self.story.append(sub_ttl)
       self.story.append(self.table)
       self.story.append(Spacer(1, .5*cm))
-      self.story.append(Paragraph("Ungenauigkeit:  " + str("{:.2f}".format(measurement.accuracy_score*1000) + " mm" )))
       self.story.append(Paragraph("Kommentar:" ))
       for line in measurement.comment.splitlines():
          self.story.append(Paragraph(line)) 
