@@ -2,6 +2,8 @@ import subprocess
 from adjustText import adjust_text
 import xlsxwriter
 import math
+import exifread
+import folium
 
 # local imports 
 from measurement import *
@@ -26,25 +28,26 @@ class Project():
         project_setup_window = self.Gui.make_project_setup_win(master_obj.RC_dir)
 
         # set project members from UI
-        self.location, RC_path, self.permanent_licence_active, self.name = self.UiHandler.handle_project_setup(project_setup_window, master_obj)
+        self.location, RC_path, self.permanent_licence_active, self.name, self.limit = self.UiHandler.handle_project_setup(project_setup_window, master_obj)
         master_obj.set_RC_dir(RC_path)
 
 
 
 
     def create_drone_measurement(self, init_status):
-
-
         # check for additional or initial measurement
         if init_status:
             measurement_setup_window = self.Gui.make_init_measurement_setup_win()
             imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui, self.name)
-
+            
+            weather_info_window = self.Gui.make_weather_info_window()
+            weather_conditions, temperature = self.UiHandler.get_weather_conditions(weather_info_window)
+            
             '''uncomment for agile version'''
             marker_input_window = self.Gui.make_marker_input_window(self.target_list)
-            self.reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
+            self.reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names_and_ref_distance(self.Gui, marker_input_window, self.target_list)
             
-            '''comment out for agile version'''
+            '''comment for agile version'''
             # self.reference_list = ["1x12:01a", "1x12:01b", "1x12:01c"]
             # target_list = ["1x12:011", "1x12:015", "1x12:026"]
             # self.target_list.labels = target_list
@@ -57,7 +60,9 @@ class Project():
             measurement_setup_window = self.Gui.make_measurement_setup_win()
             imgs_dir = self.UiHandler.get_img_dir(measurement_setup_window, self.Gui)
 
-
+            weather_info_window = self.Gui.make_weather_info_window()
+            weather_conditions, temperature = self.UiHandler.get_weather_conditions(weather_info_window)
+            
             reference_list = self.drone_measurement_list[0].ref_marker_names
             target_list = self.drone_measurement_list[0].target_marker_names
             ref_dist = self.drone_measurement_list[0].ref_distance
@@ -67,9 +72,10 @@ class Project():
         # TODO: differentiate between licence path and pin (maybe if pin.type == integer, achtung none)
         if self.permanent_licence_active == False:
 
-            licence_browse_window = self.Gui.make_licence_browse_win()
-            licence_pin = self.UiHandler.get_licence_pin(licence_browse_window)
-
+            #licence_browse_window = self.Gui.make_licence_browse_win()
+            #licence_pin = self.UiHandler.get_licence_pin(licence_browse_window)
+            # since no licence is required any more 
+            pass
 
 
         pop_up = GUI.popup_window("pjct_pop_wait")
@@ -81,6 +87,8 @@ class Project():
                                                                    self.reference_list,
                                                                    target_list,
                                                                    self, 
+                                                                   temperature,
+                                                                   weather_conditions,
                                                                    ref_dist, 
                                                                    imgs_dir),
                                                                    '-MEASUREMENT_COMPLETED-')
@@ -95,17 +103,24 @@ class Project():
                 
 
 
-    def create_manual_measurement(self):
+    def create_manual_measurement(self, droneMeasurement_dir):
         
         manual_measurement_window = self.Gui.make_manual_measurement_input_window(self)
-        manual_measurement_dict = self.UiHandler.get_manual_measurement_distances(manual_measurement_window, self)
+        manual_measurement_dict = self.UiHandler.get_manual_measurement_distances(manual_measurement_window, self, droneMeasurement_dir)
         
+
+        weather_info_window = self.Gui.make_weather_info_window()
+        weather_conditions, temperature = self.UiHandler.get_weather_conditions(weather_info_window)
+            
+
         new_manual_measurement = ManualMeasurement(
                                     self.location,            
                                     self.reference_list,
                                     [*manual_measurement_dict.keys()],
                                     self, 
-                                    manual_measurement_dict.values())
+                                    temperature,
+                                    weather_conditions,
+                                    manual_measurement_dict.values())   # distance in meters
         
         manual_measurement_window.close()
         
@@ -127,18 +142,108 @@ class Project():
         # crate path and name to save RC project
         save_path = measurement.dir + "/" + measurement.name + ".rcproj"
 
+        # convert float distance to string for RC input
+        str_ref_distance = str(measurement.ref_distance)
+
 
         # run RealityCapture, detect markers, define reference distance, export 3D-point-cooridnates         
         result = subprocess.run(
             [RC_dir, 
             "-addFolder", measurement.img_path, 
             "-detectMarkers", 
-            "-defineDistance", origin, refMarkerX, measurement.ref_distance, 
-            "-defineDistance", origin, refMarkerZ, measurement.ref_distance,
+            "-defineDistance", origin, refMarkerX, str_ref_distance, 
+            "-defineDistance", origin, refMarkerZ, str_ref_distance,
             "-align",
             "-exportGroundControlPoints", measurement.controlPoint_path,
             "-save", save_path,
             "-quit"])
+
+
+
+
+    def get_GPS_coordinates(self, measurement):
+        # find any image from where the coordinates are extracted (all images should have the same location)
+        img_list = os.listdir(measurement.img_path)
+
+        for element in img_list:
+            if (element.endswith("JPG") or 
+                element.endswith("JPEG") or 
+                element.endswith("jpg") or
+                element.endswith("jpeg") or  
+                element.endswith("PNG") or 
+                element.endswith("png") or 
+                element.endswith("bmp") or
+                element.endswith("BMP")):
+
+                img_dir = measurement.img_path + "/" + element
+                break
+        
+        f = open(img_dir, "rb")
+
+        # Return exif tags
+        tags = exifread.process_file(f)
+
+        # catch case when no gps data is available
+        try:
+            # Get GPS coordinates
+            DMS_latitude = tags["GPS GPSLatitude"].values
+            DMS_longitude = tags["GPS GPSLongitude"].values
+            altitude = tags["GPS GPSAltitude"].values
+
+
+            # translate sexagesimal coordinates top decimal coordinates
+            DG_latitude = float(DMS_latitude[0] + DMS_latitude[1]/60 + DMS_latitude[2]/3600)
+            DG_longitude = float(DMS_longitude[0] + DMS_longitude[1]/60 + DMS_longitude[2]/3600)
+
+
+            # store decimal gps values
+            self.latitude = DG_latitude
+            self.longitude = DG_longitude
+            self.altitude = float(altitude[0])
+
+
+            # make map with gps location
+            m = folium.Map([DG_latitude, DG_longitude], zoom_start=15)
+
+            # add marker to map
+            folium.Marker(
+                location=[DG_latitude, DG_longitude],
+                tooltip=self.name,
+                icon=folium.Icon(icon="camera")).add_to(m)
+            
+            m.save(self.dir + "/" + self.name + ".html")
+
+            self.GPS_available = True
+        
+        except Exception as ex:
+            print(ex)
+
+            # store dummy gps values
+            self.latitude = "-"
+            self.longitude = "-"
+            self.altitude = "-"
+
+            self.GPS_available = False
+
+
+
+
+    def update_GPS_coordinates(self):
+        # get new GPS coordinates
+        latitude = self.latitude
+        longitude = self.longitude
+        
+        if self.latitude != "-":
+            # make new map with gps location
+            m = folium.Map([latitude, longitude], zoom_start=15)
+        
+            # add marker to map
+            folium.Marker(
+                location=[latitude, longitude],
+                tooltip=self.name,
+                icon=folium.Icon(icon="camera")).add_to(m)
+            
+            m.save(self.dir + "/" + self.name + ".html")
 
 
 
@@ -160,13 +265,12 @@ class Project():
 
 
 
-
     def visualize_points(self, init_points, ref_points, current_points = None):
         # get coordinate system origin
         origin = ref_points[0]
         
         # axis length for vizualization
-        ax_len = 0.2
+        ax_len = 120
         
         # coordinate system points
         cp1 = [ax_len, 0, 0]
@@ -180,18 +284,18 @@ class Project():
 
 
         for point in init_points: 
-            x_i.append(point.x)
-            y_i.append(point.y)
-            z_i.append(point.z)
+            x_i.append(point.x * 1000)  # in millimeter
+            y_i.append(point.y * 1000)  # in millimeter
+            z_i.append(point.z * 1000)  # in millimeter
             #print(f"name: {point.name}, x: {point.x}, y: {point.y}, z: {point.z}")
 
         # create figure 
         ax = plt.figure().add_subplot(projection='3d')
 
         # Set the axis labels
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
+        ax.set_xlabel('x (mm)')
+        ax.set_ylabel('y (mm)')
+        ax.set_zlabel('z (mm)')
 
         # plot coordinate system
         ax.plot([origin.x,ax_len], [origin.y,0], [origin.z,0], "red")
@@ -213,13 +317,13 @@ class Project():
 
         # add labels to init points
         for x, y, z, label, zdir in zip(x_i, y_i, z_i, target_labels, zdirs):
-            ax.text(x, y, z+0.01, label, zdir, color="brown")
+            ax.text(x, y, z-10, label, zdir, color="brown")
 
         # add labels to coordinate points
-        ax.text(origin.x, origin.y, origin.z+0.01, ref_points[0].name, zdir, color="black")
-        ax.text(cp1[0], cp1[1], cp1[2]+0.01, "x, "+ref_points[1].name, zdir, color="red")
-        ax.text(cp2[0], cp2[1], cp2[2]+0.01, "y", zdir, color="green")
-        ax.text(cp3[0], cp3[1], cp3[2]+0.01, "z, "+ref_points[2].name, zdir, color="blue")
+        ax.text(origin.x, origin.y, origin.z-10, ref_points[0].name, zdir, color="black")
+        ax.text(cp1[0], cp1[1], cp1[2]-10, "x, "+ref_points[1].name, zdir, color="red")
+        ax.text(cp2[0], cp2[1], cp2[2]-10, "y", zdir, color="green")
+        ax.text(cp3[0], cp3[1], cp3[2]-10, "z, "+ref_points[2].name, zdir, color="blue")
 
 
 
@@ -230,9 +334,9 @@ class Project():
             z_c = []
 
             for point in current_points: 
-                x_c.append(point.x)
-                y_c.append(point.y)
-                z_c.append(point.z)
+                x_c.append(point.x * 1000)  # in mm
+                y_c.append(point.y * 1000)  # in mm
+                z_c.append(point.z * 1000)  # in mm
 
             # plot current points
             current_scatter = ax.scatter(x_c, y_c, z_c, c = "orange", marker="o", label="current measurement")
@@ -268,9 +372,9 @@ class Project():
 
 
     def overview(self, master_obj):
-        overview_window, drone_lst, manual_lst = self.Gui.make_project_overview_window(self.drone_measurement_list, self.manual_measurement_list, self)
+        overview_window, drone_lst, manual_lst, menu_list = self.Gui.make_project_overview_window(self.drone_measurement_list, self.manual_measurement_list, self)
 
-        self.UiHandler.handle_measurement_overview(overview_window, drone_lst, manual_lst, self, master_obj)
+        self.UiHandler.handle_measurement_overview(overview_window, drone_lst, manual_lst, self, master_obj, menu_list)
 
 
 
@@ -301,13 +405,10 @@ class Project():
                 init = float(init_point.measured_distance)
                 subseq = float(subseq_point.measured_distance)
 
-
-                displacement = init - subseq
-                #displacement = str(displacement)
+                displacement = subseq - init
                 subseq_point.set_displacement(displacement)
 
         
-
 
 
     def calc_distance_to_origin(self, subseq_measurement):
@@ -329,7 +430,6 @@ class Project():
 
         measurement.accuracy_score = abs(calculated_accuracy_indication_length-self.accuracy_indication_true_length)
         
-
 
 
 
@@ -357,9 +457,16 @@ class Project():
 
         def get_displacement(point, coord):
             try: 
-                return "{:.2f}".format(1000*point.displacement[coord])
+                return "{:.2f}".format(1000*point.displacement[coord]) # in millimeters
             
             except Exception as ex:
+                return "-"
+            
+        def get_length_variation(point):
+            try: 
+                return str("{:.2f}".format(1000*point.displacement)) # in millimeters
+
+            except Exception: 
                 return "-"
         
 
@@ -367,7 +474,7 @@ class Project():
         def make_manual_measurement_block(worksheet, measurement, align_center, align_center_rotate, block_end):
             # calculate the length and position of each measurement block 
             block_start = block_end + 2
-            block_end = block_start + 5 + len(measurement.target_points)
+            block_end = block_start + 6 + len(measurement.target_points)
 
             # merge vertical measurement title block
             merging_cells_m = "A" + str(block_start) + ":A" + str(block_end)
@@ -377,9 +484,15 @@ class Project():
             merging_cells_d = "C" + str(block_start) + ":F" + str(block_start)
             worksheet.merge_range(merging_cells_d, "this is a placehoder", align_center)
 
+            # merging lenght variation cells
+            merging_cells_v = "G" + str(block_start) + ":I" + str(block_start)
+            worksheet.merge_range(merging_cells_v, "this is a placehoder", align_center)
+
 
             # making column titles
-            col_titles = ["Marker Name", "Gemessene Distanz zur Basisplatte (mm)"]
+            col_titles = ["Marker Name", "Gemessene Distanz zur Basisplatte (mm)", 
+                          "will be overwritten", "will be overwritten", "will be overwritten",
+                          "Längenänderung (mm)"]
             
             for count, element in enumerate(col_titles):
                 worksheet.write(block_start-1, 1+count, element, align_center)
@@ -392,10 +505,17 @@ class Project():
                 merging_cells_k = "C" + str(block_start+row_count+1) + ":F" + str(block_start+row_count+1)
                 worksheet.merge_range(merging_cells_k, "this is a placehoder", align_center)
 
+                # merging length variation cells
+                merging_cells_j = "G" + str(block_start+row_count+1) + ":I" + str(block_start+row_count+1)
+                worksheet.merge_range(merging_cells_j, "this is a placehoder", align_center)
 
 
                 row = [target.name, 
-                       target.measured_distance]
+                       "{:.2f}".format(target.measured_distance*1000),   # in millimeters 
+                       "will be overwritten",
+                       "will be overwritten",
+                       "will be overwritten",
+                       get_length_variation(target)]    # in millimeters
                 
                 for col_count, element in enumerate(row):
                     worksheet.write(block_start+row_count, 1+col_count, element, align_center)
@@ -446,9 +566,9 @@ class Project():
                 dist_origin = np.linalg.norm(point.get_pos())
 
                 row = [point.name, 
-                    "{:.2f}".format(point.x*1000), # x-coord
-                    "{:.2f}".format(point.y*1000), # y-coord
-                    "{:.2f}".format(point.z*1000), # z-coord
+                    "{:.2f}".format(point.x*1000), # x-coord, im millimeters
+                    "{:.2f}".format(point.y*1000), # y-coord, im millimeters
+                    "{:.2f}".format(point.z*1000), # z-coord, im millimeters
                     "{:.2f}".format(dist_origin*1000), # euclidian distance to origin
                     get_displacement(point, 0),
                     get_displacement(point, 1),
@@ -475,7 +595,7 @@ class Project():
             worksheet.write(0,1, self.name, big)
 
             # initial value to calculate first block start
-            block_end = 2
+            block_end = 3
 
 
             # set column width for readability
@@ -528,11 +648,13 @@ class Project():
             
 
 
-    def dump_pdf(self, dump_dir):        
+    def dump_pdf(self):        
         from pdfGenerator import PdfGenerator
 
+        dump_path = self.dir + "/" + self.name +".pdf"
+
         new_pdf = PdfGenerator()
-        doc = new_pdf.setup_doc(dump_dir, self.location)
+        doc = new_pdf.setup_doc(dump_path, self.location)
         
         for measurement in self.all_measurement_list:
 
@@ -548,10 +670,10 @@ class Project():
 
 
         # checks if an existing file is opened/writeable
-        if os.path.exists(dump_dir):
+        if os.path.exists(dump_path):
             while True:
                 try: 
-                    open(dump_dir, "a")
+                    open(dump_path, "a")
                     # continues when file is writable
                     break
                 
@@ -628,10 +750,10 @@ class Project():
             
 
 
-    def confirm_measurement_added(self):
+    def confirm_added_saved_element(self, id):
         w, h = sg.Window.get_screen_size()
 
-        GUI.non_blocking_popup("meas_pop_added", [w/2-50, h/2 +50], 'Green')
+        GUI.non_blocking_popup(id, 'Green', [w/2-50, h/2 +50])
         sg.theme(GUI.theme)
 
 

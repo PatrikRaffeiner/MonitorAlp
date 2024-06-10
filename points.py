@@ -37,10 +37,10 @@ class DronePoint:
 class ManualPoint:
     def __init__(self, name, distance):
         self.name = name
-        self.measured_distance = distance
+        self.measured_distance = distance   # in meters
 
     def set_displacement(self, displacement):
-        self.displacement = displacement
+        self.displacement = displacement    # in meters
 
     def set_status(self, status):
         self.status = status

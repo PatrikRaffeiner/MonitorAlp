@@ -63,7 +63,7 @@ class ProjectList(list):
         if len(project_names) == 0:
             w, h = sg.Window.get_screen_size()
 
-            popup_win = gui.non_blocking_popup("pop_txt_nopjct", [w/2-50, h/2 +50], 'DarkRed1')
+            popup_win = gui.non_blocking_popup("pop_txt_nopjct", 'DarkRed1', [w/2-50, h/2 +50])
 
 
             return False

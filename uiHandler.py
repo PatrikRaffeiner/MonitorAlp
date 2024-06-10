@@ -1,13 +1,13 @@
 import PySimpleGUI as sg
 import os
-import threading
-from time import sleep 
+from copy import deepcopy
+import shutil
 import re
 import subprocess
 
 # local imports
 from gui import *
-from measurement import DroneMeasurement, ManualMeasurement
+from exceptions import*
 
 class UIhandler():
     def handle_project_setup(self, project_setup_window, master_obj):
@@ -20,6 +20,7 @@ class UIhandler():
         # initiate listener flags with "low"
         loc_flag = False
         licence_flag = False
+        limit_flag = False
 
         # handle possible existing RealityCapture execution directory 
         if master_obj.RC_dir != None:
@@ -34,7 +35,7 @@ class UIhandler():
             # end if window is closed or cancel is pressed
             if event == "-CANCEL-" or event == sg.WIN_CLOSED:
                 project_setup_window.close()
-                break
+                raise ClosedWindow("Project setup window closed")
             
             # event listener for project name/location
             if event == "-LOC-":
@@ -57,12 +58,17 @@ class UIhandler():
                 exe_flag = self.handle_execution_input(RC_input, project_setup_window)  
                 RC_path = RC_input
 
-            # event listener for permanent licence checkbox
-            if event == "-CHECK-":
-                licence_flag = values["-CHECK-"]
+            # event listener for shift limit
+            if event == "-LIMIT-":
+                limit_input = values["-LIMIT-"]
+
+                # inspects distance input and highlights input window when incorrect input is provided
+                # also highlights the background (red) if wrong format is provided
+                limit_flag, limit = self.inspect_distance_input(limit_input, project_setup_window, ('-LIMIT-'))
+
 
             # enable "Continue" button when project name/location and RC execution path is entered
-            if loc_flag and exe_flag:
+            if loc_flag and exe_flag and limit_flag:
                 proceed.update(disabled = False)
             
             else:
@@ -75,7 +81,7 @@ class UIhandler():
                 name = location
 
                 # set project members from UI
-                return location, RC_path, licence_flag, name
+                return location, RC_path, licence_flag, name, limit
 
 
 
@@ -133,7 +139,11 @@ class UIhandler():
             # End if window is closed
             if event == "-CANCEL-" or event == sg.WIN_CLOSED:
                 measurement_setup_window.close()
-                break
+                print("measurement setup window closed")
+
+                # raise exception to catch closed window
+                raise ClosedWindow("Measurement setup window closed")
+
             
             if event == "-IMGFOLDER-":
                 imgfolder = values["-IMGFOLDER-"]
@@ -189,7 +199,8 @@ class UIhandler():
             # End if window is closed
             if event == "-CANCEL-" or event == sg.WIN_CLOSED:
                 measurement_setup_window.close()
-                break
+                # raise exception to catch closed window
+                raise ClosedWindow("Measurement setup window closed")
             
             if event == "-IMGFOLDER-":
                 imgfolder = values["-IMGFOLDER-"]
@@ -214,7 +225,7 @@ class UIhandler():
 
 
 
-    def get_manual_measurement_distances(self, manual_measurement_window, project):
+    def get_manual_measurement_distances(self, manual_measurement_window, project, droneMeasurement_dir):
 
         accept = manual_measurement_window["-CONTINUE-"]
 
@@ -229,7 +240,11 @@ class UIhandler():
             # End if window is closed
             if event == "-CANCEL-" or event == sg.WIN_CLOSED:
                 manual_measurement_window.close()
-                break
+
+                # delete dir
+                shutil.rmtree(droneMeasurement_dir)
+                raise ClosedWindow("Manual measurement input window closed")    
+                
             
             # listener for every target marker, including added targets
             if event[0] == "-TARGET-":
@@ -243,7 +258,7 @@ class UIhandler():
                 dist_flag, input_distance = self.inspect_distance_input(input_value, manual_measurement_window, ('-TARGET-', event[1]))
                 if dist_flag: 
                     # correct input format provided, sets possible red background to white and stores value
-                    target[event[1]] = input_distance
+                    target[event[1]] = input_distance   # in meters
                     manual_measurement_dict.update(target)
 
                 else: 
@@ -255,17 +270,46 @@ class UIhandler():
             if len(manual_measurement_dict) == len(project.target_list.labels):
                 accept.update(disabled = False)
 
-            if event == "-CONTINUE-": 
-                # convert distance input (str) into float
-                distances = [*manual_measurement_dict.values()]
-                targets = [*manual_measurement_dict.keys()]
+            if event == "-CONTINUE-":
+                return manual_measurement_dict  # distance values in meters
 
-                manual_measurement_dict.clear()
 
-                for target, distance in zip(targets, distances):
-                    manual_measurement_dict.update({target : float(distance)})
 
-                return manual_measurement_dict
+
+    def get_weather_conditions(self, weather_info_window):
+        # flags
+        temp_flag = False
+        weather_flag = False
+
+        while True: 
+            event, values = weather_info_window.read()
+
+            # End if window is closed
+            if event == sg.WIN_CLOSED or event == "-CANCEL-":
+                weather_info_window.close()
+                break
+
+            if event == "-TEMP-":
+                if self.inspect_temperature(values["-TEMP-"], weather_info_window, "-TEMP-"):
+                    temp_flag = True
+                    temperature = values["-TEMP-"]
+
+                else: 
+                    temp_flag = False
+
+            if "weather" in event:
+                weather_flag= True
+
+                split = event.split("::")
+                weather_conditions = split[-1]
+
+            if temp_flag and weather_flag:
+                weather_info_window["-CONTINUE-"].update(disabled=False)
+
+            if event == "-CONTINUE-":
+                weather_info_window.close()
+                
+                return weather_conditions, temperature
 
 
 
@@ -343,7 +387,7 @@ class UIhandler():
 
 
 
-    def get_marker_names(self, gui, marker_input_window, project_target_list):
+    def get_marker_names_and_ref_distance(self, gui, marker_input_window, project_target_list):
 
         okay = marker_input_window["-CONTINUE-"]
 
@@ -365,20 +409,21 @@ class UIhandler():
             # End if window is closed
             if event == "Cancel" or event == sg.WIN_CLOSED:
                 marker_input_window.close()
-                break
+                raise ClosedWindow("Measurement setup window closed")
 
             # reference marker
             if event == "-ORIG-":
                 origin_marker = values["-ORIG-"]
-                orig_flag = True
+
+                orig_flag = self.inspect_marke_name(marker_input_window, origin_marker, "-ORIG-")
 
             if event == "-HORIZ-":
                 horizontal_marker = values["-HORIZ-"]
-                horiz_falg = True
+                horiz_falg = self.inspect_marke_name(marker_input_window, horizontal_marker, "-HORIZ-")
 
             if  event == "-VERT-":
                 vertical_marker = values["-VERT-"]
-                vert_flag = True
+                vert_flag = self.inspect_marke_name(marker_input_window, vertical_marker, "-VERT-")
 
             # add additional target marker
             if event == "-ADD-":
@@ -402,8 +447,9 @@ class UIhandler():
 
             # listener for every target marker, including added targets
             if event[0] == "-TARGET-":
-                project_target_list.dict_[event[1]][2] = values[("-TARGET-", event[1])]
-                project_target_list.dict_[event[1]][0] = True
+                target_marker = values[("-TARGET-", event[1])] 
+                project_target_list.dict_[event[1]][2] = target_marker
+                project_target_list.dict_[event[1]][0] = self.inspect_marke_name(marker_input_window, target_marker, ("-TARGET-", event[1]))
 
                         
                         
@@ -436,21 +482,42 @@ class UIhandler():
 
 
 
-    def inspect_distance_input(self, input, input_window, args):
+    def inspect_marke_name(self, marker_input_window, marker_name, marker_key):
+        # check for correct input of marker name
+        match = re.match("^1x12:0[0-9]{2}$|1x12:0[0-9][a-z]$", marker_name)
 
-        def divide_string(string):
-            # divide input string by 1000 (turn mm-string to m-string)
-            ref_distance = float(string)
-            ref_distance /= 1000        # transform into meters
-            return str(ref_distance)    # transform to string
-        
+        # tooltip for wrong marker name format
+        tip_name = getText("mrk_tip_name")
 
-        # transform possible dot-input to comma-input 
-        comma_input = input.replace(".",",")
+        # correct input marker
+        if match: 
+            # clear possible red background color of input line and remove tooltip
+            marker_input_window[marker_key].update(background_color="white")
+            marker_input_window[marker_key].TooltipObject.text = ""
+
+            marker_name_flag = True
+
+        else: 
+            # highlight background of input line red 
+            marker_input_window[marker_key].update(background_color="red")
+            marker_input_window[marker_key].TooltipObject.text = tip_name
+
+            marker_name_flag = False
+  
+        return marker_name_flag
+
+            
 
 
-        # check for correct input
-        match = re.match("^[0-9]{3},[0-9]$", comma_input)
+    def inspect_distance_input(self, input, input_window, args): 
+
+        # transforms possible input with a comma decimal separator 
+        # to a dot decimal separator format
+        dot_input = input.replace(",",".")       
+
+        # checks if input matches the correct format
+        # [1-4 integers] [.] [1-2 integers]
+        match = re.match("^[0-9]{1,4}[.][0-9]{1,2}$", dot_input)
 
         # correct input format 
         if match:
@@ -462,9 +529,12 @@ class UIhandler():
 
             distance_flag = True
 
-            dot_input = input.replace(",",".")
+            float_input = float(dot_input)
 
-            return distance_flag, divide_string(dot_input)
+            # transform from mm to m
+            m_input = float_input / 1000
+
+            return distance_flag, m_input
         
 
         else:
@@ -476,8 +546,70 @@ class UIhandler():
             distance_flag = False
 
             return distance_flag, None
+
+
+
+
+    def inspect_lat_long_alt(self, input, input_window, args):
+        # transforms possible input with a comma decimal separator 
+        # to a dot decimal separator format
+        dot_input = input.replace(",",".")       
+
+        # checks if input matches the correct format
+        # [1-4 integers] [.] [1-2 integers]
+        match1 = re.match("^[\d]{1,2}[.][\d]{0,14}$", dot_input)
+        match2 = re.match("^[-]$", dot_input)
+
+        # correct input format 
+        if match1:
+            # clear the input line and set distance flag
+            input_window[args].update(background_color="white")
+            input_flag = True
+            float_input = float(dot_input)
+
+            meter_input = float_input / 1000 # transform mm input to m
+
+            return input_flag, meter_input
+
+
+        if match2: 
+            # clear the input line and set distance flag
+            input_window[args].update(background_color="white")
+            input_flag = True
+            hyphen = dot_input
+
+            return input_flag, hyphen
+
+
+        else:
+            # highlight input line 
+            input_window[args].update(background_color="red")
+            input_flag = False
+
+            return input_flag, None
+
+
+
+
+    def inspect_temperature(self, input, input_window, args):
+        match1 = re.match("^[\d]{1,2}$", input)
+        match2 = re.match("^[-][\d]{1,2}$", input)
+
+        if match1 or match2: 
+            # clear the input line and set distance flag
+            input_window[args].update(background_color="white")
+            input_flag = True
+
+            return input_flag
         
-        
+        else:
+            # highlight input line 
+            input_window[args].update(background_color="red")
+            input_flag = False
+
+            return input_flag
+
+
 
 
     def select_from_project_list(self, load_window, recent_projects, project_list, master_obj):
@@ -519,21 +651,27 @@ class UIhandler():
                     # End if window is closed
                     if event == sg.WIN_CLOSED:
                         warn_window.close()
-                        break
 
-                    if event == "-ACKNOWLEDGE-" and selected_project.delete_directory():
-                        project_list.remove_project(selected_project)
-
-                        project_names = project_list.get_names()
-                        load_window["-PROJECT_SELECT-"].update(project_names)
-
-                        master_obj.save()
-
-                        warn_window.close()
+                        # closes "old" load window, new one is invoked 
+                        # through load_window.read() in while above
+                        load_window.close()
                         return
+
+                    if event == "-ACKNOWLEDGE-":
+                        warn_window.close()
+                        if selected_project.delete_directory():
+                            project_list.remove_project(selected_project)
+
+                            # close old window
+                            load_window.close()
+
+                            master_obj.save()
+
+                            return
 
                     if event == "-CANCEL-":
                         warn_window.close()
+                        load_window.close()
                         return
                 
             
@@ -547,17 +685,17 @@ class UIhandler():
                 
 
 
-    def handle_measurement_overview(self, overview_window, select_lst, manual_lst, project, master_obj):
+    def handle_measurement_overview(self, overview_window, select_lst, 
+                                    manual_lst, project, master_obj, menu_list):
         
-        calc_btn = overview_window["-CALC-"]
-        del_drone_btn = overview_window["-DEL_DRONE-"]
-        del_manual_btn = overview_window["-DEL_MANUAL-"]
-        add_drone_btn = overview_window["-ADD_DRONE-"]
-        add_manual_btn = overview_window["-ADD_MANUAL-"]
-        dump_btn = overview_window["-DUMP-"]   # remove this line
-        comment_drone_btn = overview_window["-COMMENT_DRONE-"]  
-        comment_manual_btn = overview_window["-COMMENT_MANUAL-"]  
-        open_RC_btn = overview_window["-OPEN_RC-"]
+        # initaially set "show location in map"
+        if not project.GPS_available:
+            menu_elements = deepcopy(overview_window["-MENU-"].MenuDefinition)
+            menu_elements[0][1][3] = "!" + menu_elements[0][1][3]
+            
+            # update layout to enforce recent changes
+            overview_window["-MENU-"].update(menu_definition = menu_elements)
+
 
         while True:
             event, values = overview_window.read()
@@ -566,6 +704,7 @@ class UIhandler():
             if event == sg.WIN_CLOSED:
                 overview_window.close()
                 break
+
 
             # show attributes of selected element/measurement
             if event ==  "-DRONE_SELECT-": 
@@ -577,35 +716,30 @@ class UIhandler():
                 # visualize drone measurement info in output list
                 selected_measurement.show_measurement_info(overview_window)
 
-                # enable/disable correct buttons to add a measurement 
-                add_drone_btn.update(disabled = False)
-                dump_btn.update(disabled = False) # remove this line
-                add_manual_btn.update(disabled = True)
-                del_manual_btn.update(disabled = True)
-                comment_drone_btn.update(disabled = False)
-                comment_manual_btn.update(disabled = True)
-                open_RC_btn.update(disabled = False)
+                menu_elements = deepcopy(overview_window["-MENU-"].MenuDefinition)
 
 
+                # disabling all menu elements of the manual measurement except adding a manual measurement
+                for i in range(1, len(menu_elements[2][1])):
+                    if not menu_elements[2][1][i].startswith("!"):
+                        menu_elements[2][1][i] = "!" + menu_elements[2][1][i]
 
-                # enable buttons diaplacement calculation, remove measurement and 
-                # dump pdf when selected measurement is not initial measurement 
-                if selected_measurement == project.drone_measurement_list[0]:
-                    calc_btn.update(disabled = True)
-                    del_drone_btn.update(disabled = True)
-
-                    # set tooltips of drone and manual measurement delete button
-                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_nodel") # "cannot delete init measurement"
-                    overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_del")  # "Please select the measurement to delete"
-
+                # make sure striplines are visible
+                menu_elements[2][1][-2] = menu_elements[2][1][-2].replace("!", "")
+                menu_elements[1][1][-2] = menu_elements[1][1][-2].replace("!", "")
                 
-                else: 
-                    calc_btn.update(disabled = False)
-                    del_drone_btn.update(disabled = False)
 
-                    # set tooltips of drone and manual measurement delete button
-                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_delInfo")  # "Removes selected measurement irreversibly"
-                    overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_del")     # "Please select the measurement to delete"         
+                # enabling all drone menu elements 
+                for i in range(0, len(menu_elements[1][1])):
+                    menu_elements[1][1][i] = menu_elements[1][1][i].replace("!", "")  
+
+
+                # disable menu elements that do not work for initial measurement
+                if selected_measurement == project.drone_measurement_list[0]:
+                    menu_elements[1][1][1] = "!" + menu_elements[1][1][1]   # disable show displacement
+                    menu_elements[1][1][-1] = "!" + menu_elements[1][1][-1] # disable delete measurement
+
+                overview_window["-MENU-"].update(menu_definition = menu_elements)
 
 
 
@@ -618,34 +752,43 @@ class UIhandler():
                 # visualize manual measurement info in output list
                 selected_measurement.show_measurement_info(overview_window)
 
-                # enable/disable correct buttons to add a measurement 
-                add_drone_btn.update(disabled = True)
-                calc_btn.update(disabled = True)
-                del_drone_btn.update(disabled = True)
-                comment_drone_btn.update(disabled = True)
-                comment_manual_btn.update(disabled = False)
-                add_manual_btn.update(disabled = False)
-                dump_btn.update(disabled = False) # remove this line
+                menu_elements = deepcopy(overview_window["-MENU-"].MenuDefinition)
+                
+                # disabling all menu elements of the drone measurement except adding a drone measurement
+                for i in range(1, len(menu_elements[1][1])):
+                    if not menu_elements[1][1][i].startswith("!"):
+                        menu_elements[1][1][i] = "!" + menu_elements[1][1][i]
 
-                # enable remove measurement when selected measurement is not initial measurement 
-                if selected_measurement == project.manual_measurement_list[0]:
-                    del_manual_btn.update(disabled = True)
+                # make sure striplines are visible
+                menu_elements[2][1][-2] = menu_elements[2][1][-2].replace("!", "")
+                menu_elements[1][1][-2] = menu_elements[1][1][-2].replace("!", "")
+
+
+                # enable all menu elements of the manual measurement
+                for i in range(0, len(menu_elements[2][1])):
+                    menu_elements[2][1][i] = menu_elements[2][1][i].replace("!", "")  
+
                     
-                    # set tooltips of drone and manual measurement delete button
+                # disable "delete manual measurement" when selected measurement is initial measurement 
+                if selected_measurement == project.manual_measurement_list[0]:
+                    menu_elements[2][1][-1] = "!" + menu_elements[2][1][-1]
+                    
+                    '''# set tooltips of drone and manual measurement delete button
                     overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_nodel") # "cannot delete init measurement"
                     overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_del")  # "Please select the measurement to delete"
 
                 
-                else:
-                    del_manual_btn.update(disabled = False)
-                    
+                else:                   
                     # set tooltips of drone and manual measurement delete button
                     overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_delInfo")  # "Removes selected measurement irreversibly"
                     overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_del")     # "Please select the measurement to delete"  
-                
+                '''
+                # update layout to enforce recent changes
+                overview_window["-MENU-"].update(menu_definition = menu_elements)
 
 
-            if event == "-ADD_DRONE-":
+
+            if "addDrone" in event:
                 
                 # in case reality capture crashed due to any circumstances
                 # directory is completle removed 
@@ -654,10 +797,18 @@ class UIhandler():
                     project.RC_registration_and_export_points(drone_measurement, master_obj.RC_dir)
  
                     drone_measurement.transform_points()
+                
+                except ClosedWindow:
+                    # catch exception due to closed window
+                    continue
+
                 except:
+                    # catch any other exception apart due to closed windows 
+                    # abort process and delete the directory 
                     drone_measurement.delete_directory()
-                    print("deleting: " + drone_measurement.dir + " because something went wron in RC")
-                    return
+                    print("deleting: " + drone_measurement.dir + " because something went wrong in RC")
+                    continue
+                
                 drone_measurement.sort_points()
                 project.drone_measurement_list.append(drone_measurement)
                 project.all_measurement_list.append(drone_measurement)
@@ -665,56 +816,101 @@ class UIhandler():
                 project.calc_displacement(drone_measurement)
                 project.calc_distance_to_origin(drone_measurement)
                 
-                drone_measurement.check_limits()
-                drone_measurement.pdf = project.dump_pdf(drone_measurement.dir+".pdf")
-                
+                drone_measurement.check_limits()                
 
                 drone_measurement.visualize_points()
                 drone_measurement.save()
                 project.save()
                 master_obj.save()
 
+                # updating the reports
                 project.dump_xlsx_file()
+                project.dump_pdf()
 
                 drone_measurement_names =  [m.name for m in project.drone_measurement_list]
                 overview_window["-DRONE_SELECT-"].update(drone_measurement_names)
                 
                 overview_window.force_focus()
 
-                project.confirm_measurement_added()
+                # popup "successfully added measurement"
+                project.confirm_added_saved_element("pdf_pop_meas_added")
 
 
 
-            if event == "-ADD_MANUAL-":
-                manual_measurement = project.create_manual_measurement()
+            if "addManual" in event:
+                try: 
+                    manual_measurement = project.create_manual_measurement("dummy_dir")
 
-                project.calc_displacement(manual_measurement)
-                manual_measurement.check_limits()
-                project.manual_measurement_list.append(manual_measurement)
-                project.all_measurement_list.append(manual_measurement)
+                    project.calc_displacement(manual_measurement)
+                    manual_measurement.check_limits()
+                    project.manual_measurement_list.append(manual_measurement)
+                    project.all_measurement_list.append(manual_measurement)
 
-                manual_measurement.pdf = project.dump_pdf(manual_measurement.dir+".pdf")
-                project.save()
-                master_obj.save()
+                    project.pdf = project.dump_pdf()
+                    project.save()
+                    master_obj.save()
 
-                project.dump_xlsx_file()
+                    # updating the reports
+                    project.dump_xlsx_file()
+                    project.dump_pdf()
 
-                manual_measurement_names = [m.name for m in project.manual_measurement_list]
-                overview_window["-MANUAL_SELECT-"].update(manual_measurement_names)
+                    manual_measurement_names = [m.name for m in project.manual_measurement_list]
+                    overview_window["-MANUAL_SELECT-"].update(manual_measurement_names)
 
-                project.confirm_measurement_added()
+                    # popup "successfully added measurement"
+                    project.confirm_added_saved_element("pdf_pop_meas_added")
+                
+                except ClosedWindow:
+                    # catch exception due to closed window
+                    continue
+                
+                except Exception as ex: 
+                    # catch any other exception apart due to closed windows 
+                    print(ex)
 
 
 
-            if event == "-CALC-":
+            if "displacement" in event:
                 # no need to actually calculate the displacement
                 # only show the already calculated
                 project.plot_displacement(selected_measurement)
                 project.visualize_displacement(selected_measurement)
+
+
+
+            if "deleteProject" in event: 
+                # find project in project list based on selected name
+                selected_project = next((p for p in master_obj.project_list if p.name == project.name), None)
+
+                warn_window = GUI.warning_window(getText("meas_del_warn"))
+
+                while True:
+                    event, values = warn_window.read()
+            
+                    # End if window is closed
+                    if event == sg.WIN_CLOSED:
+                        break
+
+                    if event == "-ACKNOWLEDGE-":
+                        warn_window.close()
+
+                        if selected_project.delete_directory():
+                            master_obj.project_list.remove_project(selected_project)
+                        
+                            #load_window["-PROJECT_SELECT-"].update(project_names)
+
+                            master_obj.save()                        
+                            return
+
+                    if event == "-CANCEL-":
+                        warn_window.close()
+                        break
+                
+                event = "placeholder"
                 
 
 
-            if event == "-DEL_DRONE-":
+            if "deleteDrone" in event:
                 # make popup window to check for validity
                 warn_window = GUI.warning_window(getText("meas_del_warn"))
 
@@ -738,15 +934,40 @@ class UIhandler():
                         project.save()
                         master_obj.save()
                         project.dump_xlsx_file()
+                        project.dump_pdf()
+
+                        # popup "successfully removed measurement"
+                        project.confirm_added_saved_element("pdf_pop_meas_del")
 
                         warn_window.close()
 
                     if event == "-CANCEL-":
                         warn_window.close()
+                
+                
+                # disabling all menu elements of the manual measurement except adding a manual measurement
+                for i in range(1, len(menu_elements[2][1])):
+                    if not menu_elements[2][1][i].startswith("!"):
+                        menu_elements[2][1][i] = "!" + menu_elements[2][1][i]
+
+
+                # disabling all menu elements of the drone measurement except adding a drone measurement
+                for i in range(1, len(menu_elements[1][1])):
+                    if not menu_elements[1][1][i].startswith("!"):
+                        menu_elements[1][1][i] = "!" + menu_elements[1][1][i]
+
+                # make sure striplines are visible
+                menu_elements[2][1][-2] = menu_elements[2][1][-2].replace("!", "")
+                menu_elements[1][1][-2] = menu_elements[1][1][-2].replace("!", "")
+
+                # update layout to enforce recent changes
+                overview_window["-MENU-"].update(menu_definition = menu_elements)
+
+                event = "placeholder"
                         
 
 
-            if event == "-DEL_MANUAL-":
+            if "deleteManual" in event:
                 # make popup window to check validity 
                 warn_window = GUI.warning_window(getText("meas_del_warn"))
 
@@ -772,18 +993,86 @@ class UIhandler():
                         project.save()
                         master_obj.save()
                         project.dump_xlsx_file()
+                        project.dump_pdf()
+
+                        # popup "successfully removed measurement"
+                        project.confirm_added_saved_element("pdf_pop_meas_del")
 
                         warn_window.close()
 
-                                                  
+                # disabling all menu elements of the manual measurement except adding a manual measurement
+                for i in range(1, len(menu_elements[2][1])):
+                    if not menu_elements[2][1][i].startswith("!"):
+                        menu_elements[2][1][i] = "!" + menu_elements[2][1][i]
 
-            #uncomment to handle input of duplicate button 
-            if event == "-DUMP-":
-                project.dump_pdf(selected_measurement.dir+".pdf")
+
+                # disabling all menu elements of the drone measurement except adding a drone measurement
+                for i in range(1, len(menu_elements[1][1])):
+                    if not menu_elements[1][1][i].startswith("!"):
+                        menu_elements[1][1][i] = "!" + menu_elements[1][1][i]
+
+                # make sure striplines are visible
+                menu_elements[2][1][-2] = menu_elements[2][1][-2].replace("!", "")
+                menu_elements[1][1][-2] = menu_elements[1][1][-2].replace("!", "")
+
+                # update layout to enforce recent changes
+                overview_window["-MENU-"].update(menu_definition = menu_elements)
+
+                event = "placeholder"
+
+
+
+            if "showMeasurementReport" in event:
+                os.startfile(selected_measurement.dir + "/" + selected_measurement.name +".pdf")
+
                 
 
+            if "showProjectReport" in event:
+                os.startfile(project.dir + "/" + project.name +".pdf")
 
-            if event == "-COMMENT_DRONE-":
+
+
+            if "commentDrone" in event:
+                current_comment = selected_measurement.comment  
+                new_comment = current_comment
+
+                gui = GUI()
+                comment_win = gui.edit_comment(current_comment)
+
+                while True: 
+                    event, values = comment_win.read()
+
+                    # end when window is closed
+                    if event == sg.WIN_CLOSED:
+                        break
+
+                    if event == "-COMMENT-":
+                        new_comment = values["-COMMENT-"]
+
+                    if event == "-CANCEL-":
+                        comment_win.close()
+                        break
+
+                    if event == "-OK-":
+                        selected_measurement.comment = new_comment
+                        comment_win.close()
+                        master_obj.save()
+
+                        # updating the project report
+                        project.dump_pdf() 
+
+                        # popup "successfully added comment"
+                        project.confirm_added_saved_element("pdf_pop_cmnt_added")
+
+                        # updating the output column
+                        selected_measurement.show_measurement_info(overview_window)
+                        break
+
+                event="dummy"
+
+
+            
+            if "commentManual" in event:
                 current_comment = selected_measurement.comment  
                 new_comment = current_comment
 
@@ -811,49 +1100,215 @@ class UIhandler():
 
                         # updating the output column
                         selected_measurement.show_measurement_info(overview_window)
+
+                        # updating the project report
+                        project.dump_pdf() 
+
+                        # popup "successfully added comment"
+                        project.confirm_added_saved_element("pdf_pop_cmnt_added")
                         break
-
-
-            
-            if event == "-COMMENT_MANUAL-":
-                current_comment = selected_measurement.comment  
-                new_comment = current_comment
-
-                gui = GUI()
-                comment_win = gui.edit_comment(current_comment)
-
-                while True: 
-                    event, values = comment_win.read()
-
-                    # end when window is closed
-                    if event == sg.WIN_CLOSED:
-                        break
-
-                    if event == "-COMMENT-":
-                        new_comment = values["-COMMENT-"]
-
-                    if event == "-CANCEL-":
-                        comment_win.close()
-                        break
-
-                    if event == "-OK-":
-                        selected_measurement.comment = new_comment
-                        comment_win.close()
-                        master_obj.save()
-
-                        # updating the output column
-                        selected_measurement.show_measurement_info(overview_window)
-                        break
+                    
+                event="dummy"
 
                 
             
-            if event == "-OPEN_RC-":
+            if "openRC" in event:
                 load_dir = selected_measurement.dir + "/" + selected_measurement.name + ".rcproj"
                 # run RealityCapture and load saved measurement
                 result = subprocess.run(
                     [master_obj.RC_dir, 
                     "-load", load_dir
                     ])
+                
+
+
+            if "save" in event:
+                project.save()
+                master_obj.save()
+
+                project.confirm_added_saved_element("pjct_pop_save")
+
+
+
+            if "editPrjProps" in event:
+                gui = GUI()
+                properties_window = gui.make_project_properties_window(project)
+
+                # save variables for possible recovery
+                old_latitude = project.latitude
+                old_longitude = project.longitude
+                old_altitude = project.altitude
+                old_limit = project.limit
+
+                while True:
+                    event, values = properties_window.read()
+
+                    latitude_flag = True
+                    longitude_flag = True
+                    altitude_flag = True
+
+                    # End if window is closed
+                    if event == sg.WIN_CLOSED or event == "-CANCEL-":
+                        #TODO: add warning here 
+                        
+                        # recover old values due to closing of window and not accepting
+                        project.latitude = old_latitude
+                        project.longitude = old_longitude
+                        project.altitude = old_altitude
+                        project.limit = old_limit
+
+                        properties_window.close()
+
+                        # dummy event for defined state
+                        event = "dummy"
+                        break 
+                
+                    if event == "-LAT-":
+                        latitude_flag, new_latitude = self.inspect_lat_long_alt(values["-LAT-"], properties_window,("-LAT-"))
+                        project.latitude = new_latitude
+
+                    if event ==  "-LONG-":
+                        longitude_flag, new_longitude = self.inspect_lat_long_alt(values["-LONG-"], properties_window,("-LONG-"))
+                        project.longitude = new_longitude
+
+                    if event == "-ALT-":
+                        altitude_flag, new_altitude = self.inspect_lat_long_alt(values["-ALT-"], properties_window,("-ALT-"))
+                        project.altitude = new_altitude
+
+                    if event == "-LIMIT-":
+                        limit_flag, new_limit = self.inspect_lat_long_alt(values["-LIMIT-"], properties_window,("-LIMIT-"))
+                        project.limit = new_limit
+
+                    if latitude_flag == True and longitude_flag == True and altitude_flag == True: 
+                        properties_window["-CONTINUE-"].update(disabled=False)
+                    
+                    else: 
+                        properties_window["-CONTINUE-"].update(disabled=True)
+
+                    if event == "-CONTINUE-":
+                        # TODO: this will change the saved values warning
+                    
+                        project.update_GPS_coordinates()
+                        properties_window.close()
+
+                        # dummy event for defined state
+                        event = "dummy"
+                        break 
+            
+
+
+            if "editMeasProps" in event: 
+                gui = GUI()
+                measurement_prop_window = gui.make_measurement_properties_window(selected_measurement)
+
+                # save old values of window is closed cancelled
+                old_temperature = selected_measurement.temperature
+                old_weather_condition = selected_measurement.weather_conditions
+                old_distances_dict = {}
+
+                for target_point in selected_measurement.target_points: 
+                    old_distances_dict[target_point.name] = target_point.measured_distance*1000 
+
+                # initially set old values
+                weather_conditions = old_weather_condition
+                temperature = old_temperature
+                distances_dict = old_distances_dict
+                
+                # flags
+                temperature_flag = False
+                weather_flag = False
+                distance_flag = False
+
+                while True:
+                    event, values = measurement_prop_window.read()
+
+                    if event == sg.WIN_CLOSED or event == "-CANCEL-":
+                        #TODO: add warning here 
+                        
+                        # recover old values due to closing of window and not accepting
+                        selected_measurement.temperature = old_temperature
+                        selected_measurement.weather_conditions = old_weather_condition
+
+                        measurement_prop_window.close()
+                        event = "dummy_event"
+                        break
+
+                    if "weather" in event:
+                        weather_flag = True
+
+                        split = event.split("::")
+                        weather_conditions = split[-1]
+
+                    if event == "-TEMP-":
+                        if self.inspect_temperature(values["-TEMP-"], measurement_prop_window, "-TEMP-"):
+                            temperature_flag = True
+                            temperature = values["-TEMP-"]
+
+                        else: 
+                            temperature_flag = False
+
+                    if "-NEW_VALUE-" in event: 
+                        new_input_value = values[("-NEW_VALUE-", event[1])]
+
+                        distance_flag, new_input_value = self.inspect_distance_input(
+                                                            new_input_value, 
+                                                            measurement_prop_window,
+                                                            ("-NEW_VALUE-", event[1]))
+
+
+                    if weather_flag or temperature_flag or distance_flag: 
+                        measurement_prop_window["-CONTINUE-"].update(disabled=False)
+                    else: 
+                        measurement_prop_window["-CONTINUE-"].update(disabled=True)
+
+
+                    if event == "-CONTINUE-":
+                        selected_measurement.temperature = temperature
+                        selected_measurement.weather_conditions = weather_conditions
+                        for target_point, new_distance in zip(selected_measurement.target_points, list(distances_dict.values())): 
+                            target_point.measured_distance = new_distance/1000
+
+                        measurement_prop_window.close()
+                        event = "dummy_event"
+
+                        # updating the output column
+                        selected_measurement.show_measurement_info(overview_window)
+
+                        # recalculate displacement
+                        project.calc_displacement(selected_measurement)
+                        selected_measurement.check_limits()
+
+                        # updating the reports
+                        project.dump_xlsx_file()
+                        project.dump_pdf()
+
+                        # popup "Successfully created project"
+                        project.confirm_added_saved_element("pdf_pop_meas_edit")
+                        project.save()
+                        master_obj.save()
+                        break
+
+                    
+
+            if "map" in event:
+                os.startfile(project.dir + "/" + project.name + ".html")
+
+
+
+            if "openProject" in event:
+                os.startfile(project.dir)
+
+
+
+            if "openMeasurement" in event:
+                os.startfile(selected_measurement.dir)
+
+
+
+            if event == "-DUMP-":
+                project.dump_pdf()
+
+
 
 
 
@@ -866,7 +1321,7 @@ class UIhandler():
     def create_popup_above(self, textID, current_win, element):
         gui = GUI()
         loc = current_win.CurrentLocation()
-        gui.non_blocking_popup(textID, loc, "DarkRed1")
+        gui.non_blocking_popup(textID, "DarkRed1", loc)
         current_win.force_focus()
         current_win[element].SetFocus()
 
@@ -894,3 +1349,15 @@ class UIhandler():
         return selected_measurement
 
 
+
+
+    def show_missing_markers(self, missing_refs, missing_targets):
+        warn_win = GUI.make_missing_marker_warning(missing_refs, missing_targets)
+
+        while True: 
+            event, values = warn_win.read()
+
+            if event == sg.WIN_CLOSED or event == "-OK-":
+                warn_win.close()
+
+                raise Exception

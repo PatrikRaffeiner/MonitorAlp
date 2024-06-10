@@ -1,0 +1,2 @@
+class ClosedWindow(Exception):
+    pass

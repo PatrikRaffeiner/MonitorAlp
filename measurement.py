@@ -5,18 +5,21 @@ import matplotlib.pyplot as plt
 import copy
 import shutil
 import numpy as np
+import PySimpleGUI as sg
 from abc import ABC, abstractmethod         # ABC = abstract class
 
 
 # local imports
 from helpers import read_points_from_csv, set_axes_equal
 from gui import getText
+from uiHandler import UIhandler
 from points import ManualPoint
 
 class Measurement(ABC):
     @abstractmethod
     def __init__(self, location, ref_marker_names, 
-                 target_marker_names, project):
+                 target_marker_names, project, temperature, 
+                 weather_conditions):
         
         self.date = date.today().strftime("%d/%m/%Y")
         self.time = datetime.now().strftime("%H:%M:%S")
@@ -37,6 +40,12 @@ class Measurement(ABC):
         self.create_name(project)
         self.create_dir(project)
 
+        self.UiHandler = UIhandler()
+
+        self.limit = project.limit
+        self.temperature = temperature
+        self.weather_conditions = weather_conditions
+
 
                 
 
@@ -52,7 +61,6 @@ class Measurement(ABC):
         temp_date = self.date.replace("/", "-")
         new_name = self.location + "_" + temp_date 
         self.name = new_name 
-
 
 
 
@@ -108,19 +116,61 @@ class Measurement(ABC):
 
 
 
+    def check_limits(self):
+        # TODO: set displacement limit 
+        shift_limit = self.limit     # meters
+
+
+        # TODO: check any target over limit
+        for target in self.target_points:
+
+            # check norm displacement
+            if isinstance(self, ManualMeasurement):
+                abs_displacement = abs(target.displacement)
+
+            else: 
+                abs_displacement = abs(target.displacement[3])
+
+            if abs_displacement > (shift_limit):
+                #subseq_measurement.set_status("Achtung")
+                target.set_status("Achtung")
+            
+            elif abs_displacement > (0.5 * shift_limit):
+                #subseq_measurement.set_status("Warnung")
+                target.set_status("Warnung")
+
+            elif abs_displacement < (0.5 * shift_limit):
+                #subseq_measurement.set_status("OK")
+                target.set_status("OK")            
+
+
+
+        # set default status of measurement to "OK"
+        self.set_status("OK")
+
+        # reset if any target point status is not OK (Achtung overwrites Warnung)
+        if any(target_point.status == "Warnung" for target_point in self.target_points):
+            self.set_status("Warnung")
+
+        if any(target_point.status == "Achtung" for target_point in self.target_points):
+            self.set_status("Achtung")   
+
+
+
 
 
 class DroneMeasurement(Measurement):
     # extending the constructor of the parent class (Measurement)
     def __init__(self, location, ref_marker_names, target_marker_names,
-                 project, ref_dist, orig_img_path):
+                 project, temperature,weather_conditions, 
+                 ref_dist, orig_img_path):
         
-        super().__init__(location, ref_marker_names, target_marker_names, project)
-        self.ref_distance = ref_dist
+        super().__init__(location, ref_marker_names, target_marker_names, 
+                         project, temperature, weather_conditions)
+        self.ref_distance = ref_dist    # in meters
         self.copy_imgs(orig_img_path)
 
         self.ref_points = []
-
 
 
 
@@ -145,6 +195,41 @@ class DroneMeasurement(Measurement):
         self.img_path = self.dir + "/imgs"
         shutil.copytree(orig_path, self.img_path)
 
+
+
+
+    def compare_points(self):    
+        # load point coordinates from exported csv file
+        try: 
+            RC_points = read_points_from_csv(self.controlPoint_path)
+        except: 
+            sg.popup_non_blocking(getText("hm_txt_warnRC"), 
+                                   title=getText("warn_btn"), 
+                                   background_color= "Red3")
+
+
+        # names of the exported RealityCapture points
+        RC_points = [point.name for point in RC_points]
+
+        # list of points missing in the exported RealityCapture points
+        missing_refs = []
+        missing_targets =[]
+
+        for ref_point in self.ref_marker_names: 
+            if ref_point not in RC_points:
+                missing_refs.append(ref_point)
+
+        
+        for target_point in self.target_marker_names: 
+            if target_point not in RC_points:
+                missing_targets.append(target_point)
+
+
+        if missing_refs or missing_targets:
+
+            uiHandler = UIhandler()
+            uiHandler.show_missing_markers(missing_refs, missing_targets)
+            
 
 
 
@@ -237,8 +322,8 @@ class DroneMeasurement(Measurement):
 
 
     def visualize_points(self):
-        # axis length for vizualization
-        ax_len = 0.2
+        # axis length for visualization
+        ax_len = 120
         
         # coordinate system points
         cp1 = [ax_len, 0, 0]
@@ -252,9 +337,9 @@ class DroneMeasurement(Measurement):
 
 
         for point in self.points: 
-            xi_i.append(point.x)
-            yi_i.append(point.y)
-            zi_i.append(point.z)
+            xi_i.append(point.x * 1000)  # in millimeter
+            yi_i.append(point.y * 1000)  # in millimeter
+            zi_i.append(point.z * 1000)  # in millimeter
             #print(f"name: {point.name}, x: {point.x}, y: {point.y}, z: {point.z}")
 
         # create figure
@@ -262,9 +347,9 @@ class DroneMeasurement(Measurement):
         ax = fig.add_subplot(projection='3d')
 
         # Set the axis labels
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
+        ax.set_xlabel('x (mm)')
+        ax.set_ylabel('y (mm)')
+        ax.set_zlabel('z (mm)')
 
         # plot coordinate system
         ax.plot([self.origin.x,ax_len], [self.origin.y,0], [self.origin.z,0], "red")
@@ -280,6 +365,19 @@ class DroneMeasurement(Measurement):
         # plot initial control points
         ax.scatter(xi_i, yi_i, zi_i, c="red", marker='o')
 
+        # labeling and orientation of points 
+        target_labels = [self.points[i].name for i in range(len(xi_i))]
+        zdirs = [None, None, None]
+
+        # add labels to init points
+        for x, y, z, label, zdir in zip(xi_i, yi_i, zi_i, target_labels, zdirs):
+            ax.text(x, y, z-10, label, zdir, color="brown")
+
+        # add labels to coordinate points
+        ax.text(self.origin.x, self.origin.y, self.origin.z-10, self.ref_points[0].name, zdir, color="black")
+        ax.text(self.ref_points[1].x*1000, self.ref_points[1].y*1000, self.ref_points[1].z*1000-10, "x, "+ self.ref_points[1].name, zdir, color="red")
+        ax.text(cp2[0], cp2[1], cp2[2]-10, "y", zdir, color="green")
+        ax.text(self.ref_points[2].x*1000, self.ref_points[2].y*1000, self.ref_points[2].z*1000-10, "z, "+ self.ref_points[2].name, zdir, color="blue")
         
         # equal axis for better visual representarion
         set_axes_equal(ax)
@@ -297,6 +395,8 @@ class DroneMeasurement(Measurement):
         content =  [getText("meas_txt_typeD")[0], getText("meas_txt_typeD")[1], "", # Type
                     getText("meas_txt_loc"), self.location, "",                     # Location  
                     getText("meas_txt_d&t"), self.date, self.time, "",              # Time & Date
+                    getText("meas_txt_weather"), getText("meas_txt_" + self.weather_conditions), "",
+                    getText("meas_txt_temp"), str(self.temperature)+"°C", "",
                     getText("meas_txt_refM"),                                       
                     self.ref_marker_names[0],
                     self.ref_marker_names[1],
@@ -320,53 +420,18 @@ class DroneMeasurement(Measurement):
 
 
 
-    def check_limits(self):
-        # TODO: set displacement limit 
-        random_displacement_limit = 0.0003      # meter
-
-        # TODO: check any target over limit
-        for target in self.target_points:
-            # check norm displacement
-            abs_displacement = target.displacement[3]
-
-            if abs_displacement > (1.5 * random_displacement_limit):
-                #subseq_measurement.set_status("Achtung")
-                target.set_status("Achtung")
-            
-            elif abs_displacement > random_displacement_limit:
-                #subseq_measurement.set_status("Warnung")
-                target.set_status("Warnung")
-
-            elif abs_displacement < random_displacement_limit: # self.limit:
-                #subseq_measurement.set_status("OK")
-                target.set_status("OK")            
-            
-
-            
-
-
-        # set default status of measurement to "OK"
-        self.set_status("OK")
-
-        # reset if any target point status is not OK (Achtung overwrites Warnung)
-        if any(target_point.status == "Warnung" for target_point in self.target_points):
-            self.set_status("Warnung")
-
-        if any(target_point.status == "Achtung" for target_point in self.target_points):
-            self.set_status("Achtung")        
-
-
 
 
 class ManualMeasurement(Measurement):
     # extending the constructor of the parent class (Measurement)
     def __init__(self, location, ref_marker_names, target_marker_names, 
-                 project, target_distances):
-        super().__init__(location, ref_marker_names, target_marker_names, project)
+                 project, temperature, weather_conditions, target_distances):
+        super().__init__(location, ref_marker_names, target_marker_names, 
+                         project, temperature, weather_conditions)
 
         #self.distance_dict = target_distances
         for name, distance in zip(target_marker_names, target_distances):
-            point = ManualPoint(name, distance)
+            point = ManualPoint(name, distance) # magnitudes in meters
             self.target_points.append(point)
 
 
@@ -403,6 +468,8 @@ class ManualMeasurement(Measurement):
         content =  [getText("meas_txt_typeM")[0], getText("meas_txt_typeM")[1], "", # Type
                     getText("meas_txt_loc"), self.location, "",                     # Location  
                     getText("meas_txt_d&t"), self.date, self.time, "",              # Time & Date
+                    getText("meas_txt_weather"), getText("meas_txt_" + self.weather_conditions), "",
+                    getText("meas_txt_temp"), str(self.temperature)+"°C", "",
                     getText("meas_txt_trgtM")]                                      # Target marker                                      
 
         # adding target names to output
@@ -418,36 +485,5 @@ class ManualMeasurement(Measurement):
 
         overview_window["-OUTPUT-"].update(content)
 
-
-
-
-    def check_limits(self):
-        random_displacement_limit = 0.3      # millimeter
-
-
-
-        for target in self.target_points:
-            if abs(target.displacement) < random_displacement_limit:
-
-                target.set_status("OK")
-
-            elif abs(target.displacement) < 1.5*random_displacement_limit:
-                target.set_status("Warnung")
-            
-            elif abs(target.displacement) > 1.5*random_displacement_limit:
-                target.set_status("Achtung")
-
-
-
-        # set default status of measurement to "OK"
-        self.set_status("OK")
-
-        # reset if any target point status is not OK (Achtung overwrites Warnung)
-        if any(target_point.status == "Warnung" for target_point in self.target_points):
-            self.set_status("Warnung")
-
-        if any(target_point.status == "Achtung" for target_point in self.target_points):
-            self.set_status("Achtung")   
-                
 
 

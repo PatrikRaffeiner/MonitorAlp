@@ -5,6 +5,7 @@ from project import *
 from projectList import *
 from MasterObj import *
 import helpers
+from exceptions import*
 
 
 # --------------------------------------------------------------------------------------------------------#
@@ -37,74 +38,60 @@ while True:
         
     # initial measurement mode
     if event == "-START-":
-            new_project = Project()
+        new_project = Project()
 
         # catch closed setup window and return to home
-        #try: 
+        try: 
             new_project.setup(master_obj)
             init_drone_measurement = new_project.create_drone_measurement(init_status=True)
-            init_manual_measurement = new_project.create_manual_measurement()
+            init_manual_measurement = new_project.create_manual_measurement(init_drone_measurement.dir)
 
+            new_project.get_GPS_coordinates(init_drone_measurement)
 
             new_project.RC_registration_and_export_points(init_drone_measurement, master_obj.RC_dir)
             
-            # in case reality capture crashed due to any circumstances
             try: 
-                init_drone_measurement.transform_points()
-            except Exception as ex:
-            #    init_drone_measurement.delete_directory()
-            #    print("deleting: " + init_drone_measurement.dir + " because RC crashed")
-            #    break
-                print("Error during point transformation")
-                print(ex)
-            
-            try: 
-                init_drone_measurement.sort_points()
-            except Exception as ex:
-                print("Error during point sorting")
-                print(ex)
-            
-            try: 
-                new_project.all_measurement_list.append(init_drone_measurement)
-                new_project.all_measurement_list.append(init_manual_measurement)
-                new_project.drone_measurement_list.append(init_drone_measurement)
-                new_project.manual_measurement_list.append(init_manual_measurement)
-            except Exception as ex: 
-                print("error during list appending")
-                print(ex)
-            
-            try: 
-                new_project.calc_distance_to_origin(init_drone_measurement)
-            except Exception as ex: 
-                print("error during distance calculation")
-                print(ex)
-
-            try: 
-                project_list.append(new_project)
-            except Exception as ex: 
-                print("error during project list appending")
-                print(ex)
+                # raises exception when points cannot be found in RC export
+                init_drone_measurement.compare_points()
                 
-            try: 
-                master_obj.save()
-            except Exception as ex: 
-                print("error during master object saving")
-                print(ex)
+            except:
+                # remove directory for a clean folder structure
+                init_drone_measurement.delete_directory()
+                continue
+
+            init_drone_measurement.transform_points()
+            init_drone_measurement.sort_points()
+             
+            new_project.all_measurement_list.append(init_drone_measurement)
+            new_project.all_measurement_list.append(init_manual_measurement)
+            new_project.drone_measurement_list.append(init_drone_measurement)
+            new_project.manual_measurement_list.append(init_manual_measurement)
+
+            new_project.calc_distance_to_origin(init_drone_measurement)
+
+            project_list.append(new_project)
+
+            master_obj.save()
 
             init_drone_measurement.visualize_points()
             init_drone_measurement.save()
             new_project.save()
 
             new_project.dump_xlsx_file()
+            new_project.pdf = new_project.dump_pdf()
 
-            new_project.confirm_measurement_added()
+            # popup "Successfully created project"
+            new_project.confirm_added_saved_element("pdf_pop_proj_create")
 
 
+        except ClosedWindow as ex: 
+            print(ex)
+            pass
 
-        #except Exception as ex:
+        except Exception as ex:
     
-            #print("Error during measurement processing:", ex)
-            #continue
+            print("Error during measurement processing:", ex)
+            continue
         
         
 
