@@ -9,6 +9,7 @@ import subprocess
 from gui import *
 from exceptions import*
 
+
 class UIhandler():
     def handle_project_setup(self, project_setup_window, master_obj):
 
@@ -1197,14 +1198,15 @@ class UIhandler():
             
 
 
-            if "editMeasProps" in event: 
+            if "editManualMeasProps" in event: 
                 gui = GUI()
-                measurement_prop_window = gui.make_measurement_properties_window(selected_measurement)
+                manual_measurement_prop_window = gui.make_manual_measurement_properties_window(selected_measurement)
 
                 # save old values of window is closed cancelled
                 old_temperature = selected_measurement.temperature
                 old_weather_condition = selected_measurement.weather_conditions
                 old_distances_dict = {}
+
 
                 for target_point in selected_measurement.target_points: 
                     old_distances_dict[target_point.name] = target_point.measured_distance*1000 
@@ -1220,7 +1222,7 @@ class UIhandler():
                 distance_flag = False
 
                 while True:
-                    event, values = measurement_prop_window.read()
+                    event, values = manual_measurement_prop_window.read()
 
                     if event == sg.WIN_CLOSED or event == "-CANCEL-":
                         #TODO: add warning here 
@@ -1229,7 +1231,7 @@ class UIhandler():
                         selected_measurement.temperature = old_temperature
                         selected_measurement.weather_conditions = old_weather_condition
 
-                        measurement_prop_window.close()
+                        manual_measurement_prop_window.close()
                         event = "dummy_event"
                         break
 
@@ -1240,7 +1242,7 @@ class UIhandler():
                         weather_conditions = split[-1]
 
                     if event == "-TEMP-":
-                        if self.inspect_temperature(values["-TEMP-"], measurement_prop_window, "-TEMP-"):
+                        if self.inspect_temperature(values["-TEMP-"], manual_measurement_prop_window, "-TEMP-"):
                             temperature_flag = True
                             temperature = values["-TEMP-"]
 
@@ -1252,14 +1254,14 @@ class UIhandler():
 
                         distance_flag, new_input_value = self.inspect_distance_input(
                                                             new_input_value, 
-                                                            measurement_prop_window,
+                                                            manual_measurement_prop_window,
                                                             ("-NEW_VALUE-", event[1]))
 
 
                     if weather_flag or temperature_flag or distance_flag: 
-                        measurement_prop_window["-CONTINUE-"].update(disabled=False)
+                        manual_measurement_prop_window["-CONTINUE-"].update(disabled=False)
                     else: 
-                        measurement_prop_window["-CONTINUE-"].update(disabled=True)
+                        manual_measurement_prop_window["-CONTINUE-"].update(disabled=True)
 
 
                     if event == "-CONTINUE-":
@@ -1268,7 +1270,7 @@ class UIhandler():
                         for target_point, new_distance in zip(selected_measurement.target_points, list(distances_dict.values())): 
                             target_point.measured_distance = new_distance/1000
 
-                        measurement_prop_window.close()
+                        manual_measurement_prop_window.close()
                         event = "dummy_event"
 
                         # updating the output column
@@ -1288,7 +1290,80 @@ class UIhandler():
                         master_obj.save()
                         break
 
-                    
+
+
+            if "editDroneMeasProps" in event: 
+                gui = GUI()
+                drone_measurement_prop_window = gui.make_drone_measurement_properties_window(selected_measurement)
+
+                # save old values of window is closed cancelled
+                old_temperature = selected_measurement.temperature
+                old_weather_condition = selected_measurement.weather_conditions
+
+                # initially set old values
+                weather_conditions = old_weather_condition
+                temperature = old_temperature
+                
+                # flags
+                temperature_flag = False
+                weather_flag = False
+
+                while True:
+                    event, values = drone_measurement_prop_window.read()
+
+                    if event == sg.WIN_CLOSED or event == "-CANCEL-":
+                        #TODO: add warning here 
+                        
+                        # recover old values due to closing of window and not accepting
+                        selected_measurement.temperature = old_temperature
+                        selected_measurement.weather_conditions = old_weather_condition
+
+                        drone_measurement_prop_window.close()
+                        event = "dummy_event"
+                        break
+
+                    if "weather" in event:
+                        weather_flag = True
+
+                        split = event.split("::")
+                        weather_conditions = split[-1]
+
+                    if event == "-TEMP-":
+                        if self.inspect_temperature(values["-TEMP-"], drone_measurement_prop_window, "-TEMP-"):
+                            temperature_flag = True
+                            temperature = values["-TEMP-"]
+
+                        else: 
+                            temperature_flag = False
+
+
+                    if weather_flag or temperature_flag: 
+                        drone_measurement_prop_window["-CONTINUE-"].update(disabled=False)
+                    else: 
+                        drone_measurement_prop_window["-CONTINUE-"].update(disabled=True)
+
+
+                    if event == "-CONTINUE-":
+                        selected_measurement.temperature = temperature
+                        selected_measurement.weather_conditions = weather_conditions
+
+                        drone_measurement_prop_window.close()
+                        event = "dummy_event"
+
+                        # updating the output column
+                        selected_measurement.show_measurement_info(overview_window)
+
+                        # updating the reports
+                        project.dump_xlsx_file()
+                        project.dump_pdf()
+
+                        # popup "Successfully created project"
+                        project.confirm_added_saved_element("pdf_pop_meas_edit")
+                        project.save()
+                        master_obj.save()
+                        break
+
+                                
 
             if "map" in event:
                 os.startfile(project.dir + "/" + project.name + ".html")

@@ -1,8 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import PySimpleGUI as sg 
-import numpy as np
-import base64
 
 # local imports
 import helpers
@@ -342,7 +338,7 @@ class GUI():
                     [getText("meas_menu_drone"), [getText("meas_menu_addD"), getText("meas_menu_disp"), 
                                                   getText("meas_menu_cmmntD"), getText("meas_menu_open"),
                                                   getText("meas_menu_openMeas"),
-                                                  getText("meas_menu_propsM"),
+                                                  getText("meas_menu_propsD"),
                                                   '---', getText("meas_menu_delD")]],
                     [getText("meas_menu_manual"), [getText("meas_menu_addM"), 
                                                    getText("meas_menu_cmmntM"),
@@ -485,7 +481,7 @@ class GUI():
 
 
 
-    def make_measurement_properties_window(self, measurement):
+    def make_manual_measurement_properties_window(self, measurement):
         # measurement temperature and weahter conditions
         temperature = measurement.temperature
 
@@ -539,12 +535,61 @@ class GUI():
 
 
         # create marker input window
-        measurement_property_window = sg.Window(getText("mprops_win_title"), 
+        manual_measurement_property_window = sg.Window(getText("mprops_win_title"), 
                                                 [weather_layout,
                                                  values_layout,
                                                  buttons_layout])
         
-        return measurement_property_window
+        return manual_measurement_property_window
+
+
+
+
+    def make_drone_measurement_properties_window(self, measurement):
+        # measurement temperature and weahter conditions
+        temperature = measurement.temperature
+
+        # separation of images and radio
+        sep_images = 1
+        sep_radio = 2
+        
+        weather_layout = [
+            [sg.Text(getText("weather_win_title"), font=["Arial", 11, "bold"])],
+            [sg.Text(getText("props_txt_weatherInst"))],
+            [sg.Text(getText("props_txt_temperature")),
+             sg.In(size=(25,1), default_text=temperature, enable_events=True, key="-TEMP-", tooltip="")],
+            [sg.HSeparator()], [sg.HSeparator()],
+            [sg.Text(getText("meas_txt_temp")[:-1], font=["Arial", 11, "bold"])],
+            [sg.Text(getText("weather_txt_instrW"))],
+            [sg.Text("", size=(sep_images,1)), sg.Image("imgs/sunny.png"), 
+            sg.Text("", size=(sep_images,1)), sg.Image("imgs/partly_cloudy.png"),
+            sg.Text("", size=(sep_images,1)), sg.Image("imgs/cloudy.png"), 
+            sg.Text("", size=(sep_images,1)), sg.Image("imgs/foggy.png"),
+            sg.Text("", size=(sep_images,1)), sg.Image("imgs/rainy.png"), 
+            sg.Text("", size=(sep_images,1)), sg.Image("imgs/snowy.png")],
+            [sg.Text("", size=(sep_radio,1)), sg.Radio("", group_id=1, key="weather::sunny", enable_events=True), 
+            sg.Text("", size=(sep_radio,1)), sg.Radio("", group_id=1, key="weather::partly_cloudy", enable_events=True), 
+            sg.Text("", size=(sep_radio,1)), sg.Radio("", group_id=1, key="weather::cloudy", enable_events=True),
+            sg.Text("", size=(sep_radio,1)), sg.Radio("", group_id=1, key="weather::foggy", enable_events=True),
+            sg.Text("", size=(sep_radio,1)), sg.Radio("", group_id=1, key="weather::rainy", enable_events=True),
+            sg.Text("", size=(sep_radio,1)), sg.Radio("", group_id=1, key="weather::snowy", enable_events=True),
+            sg.Text("", size=(sep_radio,1))],
+            ]    
+
+
+        buttons_layout = [
+            sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True), sg.Button(getText("cancel_btn"), key="-CANCEL-")
+        ]
+
+
+        # create marker input window
+        drone_measurement_property_window = sg.Window(getText("mprops_win_title"), 
+                                                [weather_layout,
+                                                 buttons_layout])
+        
+        return drone_measurement_property_window
+
+
 
 
 
