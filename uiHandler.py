@@ -388,20 +388,9 @@ class UIhandler():
 
 
 
-    def get_marker_names_and_ref_distance(self, gui, marker_input_window, project_target_list):
+    def get_marker_names(self, gui, marker_input_window, project_target_list):
 
         okay = marker_input_window["-CONTINUE-"]
-
-        # set listener flags to low
-        # reference system/markers
-        orig_flag = False
-        horiz_falg = False
-        vert_flag = False
-
-
-        # reference distance 
-        distance_flag = False
-
 
         # event loop marker input
         while True:
@@ -412,20 +401,6 @@ class UIhandler():
                 marker_input_window.close()
                 raise ClosedWindow("Measurement setup window closed")
 
-            # reference marker
-            if event == "-ORIG-":
-                origin_marker = values["-ORIG-"]
-
-                orig_flag = self.inspect_marke_name(marker_input_window, origin_marker, "-ORIG-")
-
-            if event == "-HORIZ-":
-                horizontal_marker = values["-HORIZ-"]
-                horiz_falg = self.inspect_marke_name(marker_input_window, horizontal_marker, "-HORIZ-")
-
-            if  event == "-VERT-":
-                vertical_marker = values["-VERT-"]
-                vert_flag = self.inspect_marke_name(marker_input_window, vertical_marker, "-VERT-")
-
             # add additional target marker
             if event == "-ADD-":
                 marker_input_window.metadata += 1
@@ -433,53 +408,47 @@ class UIhandler():
                                                   [gui.marker_row(project_target_list,marker_input_window.metadata)])
                 
                 # add empty elements to edit via input
-                project_target_list.dict_.append([False, True, None])
+                project_target_list.attr.append([True, None])   # [visible, label]
+                print(f"dict {project_target_list.attr}")
 
 
             if event[0] == "-DELETE-":
                 # at least one target name must be entered
-                if len(project_target_list.dict_) > 1:
+                if len(project_target_list.attr) > 1:
                     # make clicked element invisible
                     marker_input_window[("-ROW-", event[1])].update(visible=False)
                     
-                    project_target_list.dict_[event[1]][1] = False
-
+                    # set "visibility" of target element to false
+                    project_target_list.attr[event[1]][0] = False
 
 
             # listener for every target marker, including added targets
             if event[0] == "-TARGET-":
                 target_marker = values[("-TARGET-", event[1])] 
-                project_target_list.dict_[event[1]][2] = target_marker
-                project_target_list.dict_[event[1]][0] = self.inspect_marke_name(marker_input_window, target_marker, ("-TARGET-", event[1]))
 
-                        
-                        
-            # get user input on refence distance
-            if event == ("-DIST-"):
-                distance_flag, ref_distance = self.inspect_distance_input(values[("-DIST-")], marker_input_window, ("-DIST-"))
+                # check if target name has correct input format, then store name in target list
+                if self.inspect_marke_name(marker_input_window, target_marker, ("-TARGET-", event[1])):
+                    project_target_list.attr[event[1]][1] = target_marker
+                else: 
+                    project_target_list.attr[event[1]][1] = None
 
-            active_and_set =[]
-            for target in project_target_list.dict_:
-                if target[1] == True:
-                    active_and_set.append(target[0])
+                
 
-
-            if orig_flag and horiz_falg and vert_flag and distance_flag and not any(set is False for set in active_and_set):
-                okay.update(disabled =False)
+            # check if all visible targets are named correctly
+            if any(target[0] is True and target[1] is None for target in project_target_list.attr):
+                okay.update(disabled =True)
             else:
-                okay.update(disabled=True)
+                okay.update(disabled=False)
 
             if event == "-CONTINUE-":
                 marker_input_window.close()
                 project_target_list.labels = []
 
-                for target in project_target_list.dict_:
-                    if target[0] and target[1]:
-                        project_target_list.labels.append(target[2])
-
-               
-                return [origin_marker, horizontal_marker, vertical_marker], project_target_list.labels, ref_distance
-
+                for target in project_target_list.attr:
+                    if target[0] and target[1] is not None:
+                        project_target_list.labels.append(target[1])
+              
+                return project_target_list.labels
 
 
 
@@ -816,6 +785,7 @@ class UIhandler():
 
                 project.calc_displacement(drone_measurement)
                 project.calc_distance_to_origin(drone_measurement)
+                project.calc_accuracy_indicator(drone_measurement)
                 
                 drone_measurement.check_limits()                
 
@@ -1215,6 +1185,9 @@ class UIhandler():
                 weather_conditions = old_weather_condition
                 temperature = old_temperature
                 distances_dict = old_distances_dict
+
+                print(distances_dict)
+                print(type(distances_dict["1x12:011"]))
                 
                 # flags
                 temperature_flag = False
@@ -1250,13 +1223,17 @@ class UIhandler():
                             temperature_flag = False
 
                     if "-NEW_VALUE-" in event: 
-                        new_input_value = values[("-NEW_VALUE-", event[1])]
+                        target_name = event[1]
+                        new_input_value = values[("-NEW_VALUE-", target_name)]
 
                         distance_flag, new_input_value = self.inspect_distance_input(
                                                             new_input_value, 
                                                             manual_measurement_prop_window,
-                                                            ("-NEW_VALUE-", event[1]))
-
+                                                            ("-NEW_VALUE-", target_name))
+                        
+                        if new_input_value is not None:
+                            distances_dict[target_name] = float(new_input_value*1000)
+ 
 
                     if weather_flag or temperature_flag or distance_flag: 
                         manual_measurement_prop_window["-CONTINUE-"].update(disabled=False)

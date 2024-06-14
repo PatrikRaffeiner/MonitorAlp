@@ -251,43 +251,9 @@ class GUI():
 
     
     def make_marker_input_window(self, target_list):
-        # tooltips
-        tip_dist = getText("mrk_tip_dist")
-        tip_name = getText("mrk_tip_name")
-
-        # reference coordinate/marker system
-        origin_name_layout = [
-            [sg.Text(getText("mrk_txt_orig")),
-            sg.In(size=(25,1), default_text="z.B. 1x12:01a", enable_events= True, tooltip=tip_name, key="-ORIG-")]] 
-        
-        horiz_name_layout = [
-            [sg.Text(getText("mrk_txt_hrz")),
-            sg.In(size=(25,1), default_text="z.B. 1x12:01b", enable_events= True, tooltip=tip_name, key="-HORIZ-")]] 
-        
-        vert_name_layout = [
-            [sg.Text(getText("mrk_txt_vtk")),
-            sg.In(size=(25,1), default_text="z.B. 1x12:01c", enable_events= True, tooltip=tip_name, key="-VERT-")]]
-
-        ref_dist_layout = [
-            [sg.Text(getText("mrk_txt_dist")),
-            sg.In(size=(25,1), default_text="z.B. 120.0", enable_events= True, tooltip=tip_dist, key=("-DIST-"))]]  
-        
 
         # set up marker input layout
         layout_marker_input = [
-            [sg.Text(getText("mrk_txt_descO"))],
-            [sg.Column(origin_name_layout)],
-            [sg.HSeparator()],
-            [sg.Text(getText("mrk_txt_descV"))],
-            [sg.Column(horiz_name_layout)],
-            [sg.HSeparator()],
-            [sg.Text(getText("mrk_txt_descH"))],
-            [sg.Column(vert_name_layout)],
-            [sg.HSeparator()],
-            [sg.Text(getText("mrk_txt_descD"))],
-            [sg.Column(ref_dist_layout)],
-            [sg.HSeparator()],
-            [sg.HSeparator()],
             [sg.Col([self.marker_row(target_list, 0)], key="-TARGET SECTION-")],
             [sg.Button(getText("mrk_btn_add"), key="-ADD-"), 
              sg.Push(), 

@@ -162,8 +162,8 @@ class Measurement(ABC):
 class DroneMeasurement(Measurement):
     # extending the constructor of the parent class (Measurement)
     def __init__(self, location, ref_marker_names, target_marker_names,
-                 project, temperature,weather_conditions, 
-                 ref_dist, orig_img_path):
+                 project, temperature, weather_conditions, 
+                 ref_dist, orig_img_path, accuracy_indication_names):
         
         super().__init__(location, ref_marker_names, target_marker_names, 
                          project, temperature, weather_conditions)
@@ -171,6 +171,8 @@ class DroneMeasurement(Measurement):
         self.copy_imgs(orig_img_path)
 
         self.ref_points = []
+        self.accuracy_indication_points = []
+        self.accuracy_indication_names = accuracy_indication_names
 
 
 
@@ -260,6 +262,10 @@ class DroneMeasurement(Measurement):
             pnt = next((point for point in self.points if point.name == target_marker_name))
             self.target_points.append(pnt)
 
+        # sort accuracy indicator points by checking the marker name (known accuracy indicator marker names)
+        for indicator_marker_name in self.accuracy_indication_names:
+            pnt = next((point for point in self.points if point.name == indicator_marker_name))
+            self.accuracy_indication_points.append(pnt)
     
 
     

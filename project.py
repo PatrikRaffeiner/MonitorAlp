@@ -40,21 +40,20 @@ class Project():
             measurement_setup_window = self.Gui.make_init_measurement_setup_win()
             imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui, self.name)
             
+            marker_input_window = self.Gui.make_marker_input_window(self.target_list)
+            temp_target_list = self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
+            self.target_list.labels = temp_target_list
+
             weather_info_window = self.Gui.make_weather_info_window()
             weather_conditions, temperature = self.UiHandler.get_weather_conditions(weather_info_window)
             
-            '''uncomment for agile version'''
-            marker_input_window = self.Gui.make_marker_input_window(self.target_list)
-            self.reference_list, target_list, ref_dist =  self.UiHandler.get_marker_names_and_ref_distance(self.Gui, marker_input_window, self.target_list)
+            # reference markers and distance
+            # is the same for every measurement
+            self.reference_list = ["1x12:01a", "1x12:01b", "1x12:01c"]
+            ref_dist = "0.1200"           
             
-            '''comment for agile version'''
-            # self.reference_list = ["1x12:01a", "1x12:01b", "1x12:01c"]
-            # target_list = ["1x12:011", "1x12:015", "1x12:026"]
-            # self.target_list.labels = target_list
-            # ref_dist = "0.1200"
-
-            # self.accuracy_indication_list = ["1x12:01f", "1x12:01d"]
-            # self.accuracy_indication_true_length = 0.084853    # m
+            self.accuracy_indication_list = ["1x12:01f", "1x12:01d"]
+            self.accuracy_indication_true_length = 0.084853    # m
 
         else: # additional measurement
             measurement_setup_window = self.Gui.make_measurement_setup_win()
@@ -63,19 +62,8 @@ class Project():
             weather_info_window = self.Gui.make_weather_info_window()
             weather_conditions, temperature = self.UiHandler.get_weather_conditions(weather_info_window)
             
-            reference_list = self.drone_measurement_list[0].ref_marker_names
-            target_list = self.drone_measurement_list[0].target_marker_names
+            temp_target_list = self.drone_measurement_list[0].target_marker_names
             ref_dist = self.drone_measurement_list[0].ref_distance
-        
-
-
-        # TODO: differentiate between licence path and pin (maybe if pin.type == integer, achtung none)
-        if self.permanent_licence_active == False:
-
-            #licence_browse_window = self.Gui.make_licence_browse_win()
-            #licence_pin = self.UiHandler.get_licence_pin(licence_browse_window)
-            # since no licence is required any more 
-            pass
 
 
         pop_up = GUI.popup_window("pjct_pop_wait")
@@ -85,12 +73,13 @@ class Project():
             # wrapper for parallel 
             pop_up.perform_long_operation(lambda: DroneMeasurement(self.location,
                                                                    self.reference_list,
-                                                                   target_list,
+                                                                   temp_target_list,
                                                                    self, 
                                                                    temperature,
                                                                    weather_conditions,
                                                                    ref_dist, 
-                                                                   imgs_dir),
+                                                                   imgs_dir,
+                                                                   self.accuracy_indication_list),
                                                                    '-MEASUREMENT_COMPLETED-')
             
             event, values = pop_up.read()
@@ -766,8 +755,8 @@ class Project():
             self.init_char = ord(char [0])
             
             # initialize target list with first element
-            #              set,  visible, label
-            self.dict_ = [[False, True,   None ]]
+            #             visible, label
+            self.attr = [[True,   None]]
 
         
         def make_current_marker_character(self, target_num):
