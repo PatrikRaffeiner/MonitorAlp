@@ -36,7 +36,7 @@ class UIhandler():
             # end if window is closed or cancel is pressed
             if event == "-CANCEL-" or event == sg.WIN_CLOSED:
                 project_setup_window.close()
-                raise ClosedWindow("Project setup window closed")
+                #raise ClosedWindow("Project setup window closed")
             
             # event listener for project name/location
             if event == "-LOC-":
@@ -174,7 +174,7 @@ class UIhandler():
                     
                     # create non-blocking pop up window with explanation
                     loc = measurement_setup_window.CurrentLocation()
-                    gui.non_blocking_popup("init_pop_projcet", loc, "DarkRed1")
+                    gui.non_blocking_popup("init_pop_projcet", "DarkRed1", loc)
                     measurement_setup_window.force_focus()
                     measurement_setup_window["-IMGFOLDER-"].SetFocus()
 
@@ -346,10 +346,6 @@ class UIhandler():
         return True     # no folder with same name existing 
 
 
-
-
-    def get_licence_pin(self, licence_browse_window):
-
         accept = licence_browse_window['-CONTINUE-']
         pay = licence_browse_window["-PAY_BTN-"]
         cont = licence_browse_window["-CONTINUE-"]
@@ -409,7 +405,6 @@ class UIhandler():
                 
                 # add empty elements to edit via input
                 project_target_list.attr.append([True, None])   # [visible, label]
-                print(f"dict {project_target_list.attr}")
 
 
             if event[0] == "-DELETE-":
@@ -449,6 +444,87 @@ class UIhandler():
                         project_target_list.labels.append(target[1])
               
                 return project_target_list.labels
+
+
+
+
+    def get_acquisition_date_time(self, date_time_acquisition_window):
+        # Buttons
+        okay = date_time_acquisition_window["-CONTINUE-"]
+
+        # Flags
+        date_flag = False
+        time_flag = False
+
+        # event loop marker input
+        while True:
+            event, values = date_time_acquisition_window.read()
+
+            # End if window is closed
+            if event == "CANCEL" or event == sg.WIN_CLOSED:
+                date_time_acquisition_window.close()
+                event="dummy"
+
+            if event == "-DATE-":
+                date_input = values["-DATE-"]
+                date_flag = self.inspect_date(date_time_acquisition_window, date_input, ("-DATE-"))
+            
+            if event == "-TIME-":
+                time_input = values["-TIME-"]
+                time_flag = self.inspect_time(date_time_acquisition_window, time_input, ("-TIME-"))
+            
+            if time_flag and date_flag:
+                # enable OK button 
+                okay.update(disabled = False)
+
+            if event == "-CONTINUE-":
+                date_time_acquisition_window.close()
+                event="dummy"
+                date_input = date_input.replace(".", "-")
+                return date_input, time_input
+            
+        
+
+
+    def inspect_date(self, date_time_acquisition_window, date_input, date_key):
+        # check for correct input of date
+        match = re.match("^[0-3][0-9][.][0-1][0-9][.][1-2][0-9][0-9][0-9]$", date_input)
+
+        if match: 
+            # clear possible red background color of input line and remove tooltip
+            date_time_acquisition_window[date_key].update(background_color="white")
+            
+            date_input_flag = True
+
+        else: 
+            # highlight background of input line red 
+            date_time_acquisition_window[date_key].update(background_color="red")
+
+            date_input_flag = False
+  
+        return date_input_flag
+
+
+
+                
+    def inspect_time(self, date_time_acquisition_window, time_input, time_key):
+        # check for correct input of date
+        match = re.match("^[0-2][0-9][:][0-5][0-9]$", time_input)
+
+        if match: 
+            # clear possible red background color of input line and remove tooltip
+            date_time_acquisition_window[time_key].update(background_color="white")
+            
+            time_input_flag = True
+
+        else: 
+            # highlight background of input line red 
+            date_time_acquisition_window[time_key].update(background_color="red")
+
+            time_input_flag = False
+  
+        return time_input_flag     
+
 
 
 
@@ -578,6 +654,28 @@ class UIhandler():
             input_flag = False
 
             return input_flag
+
+
+
+
+    def handle_comment_input(self, comment_win):
+        # instantiate new comment variable to return
+        new_comment = ""
+
+        while True:
+            event, values = comment_win.read()
+
+            # end when window is closed
+            if event == sg.WIN_CLOSED or event == "-CANCEL-":
+                comment_win.close()
+                return ""
+
+            if event == "-COMMENT-":
+                new_comment = values["-COMMENT-"]
+
+            if event == "-OK-":
+                comment_win.close()
+                return new_comment
 
 
 
@@ -786,6 +884,7 @@ class UIhandler():
                 project.calc_displacement(drone_measurement)
                 project.calc_distance_to_origin(drone_measurement)
                 project.calc_accuracy_indicator(drone_measurement)
+                project.calc_displacement_error(drone_measurement)
                 
                 drone_measurement.check_limits()                
 
@@ -1008,7 +1107,7 @@ class UIhandler():
                 new_comment = current_comment
 
                 gui = GUI()
-                comment_win = gui.edit_comment(current_comment)
+                comment_win = gui.make_comment_window(current_comment)
 
                 while True: 
                     event, values = comment_win.read()
@@ -1048,7 +1147,7 @@ class UIhandler():
                 new_comment = current_comment
 
                 gui = GUI()
-                comment_win = gui.edit_comment(current_comment)
+                comment_win = gui.make_comment_window(current_comment)
 
                 while True: 
                     event, values = comment_win.read()
@@ -1186,8 +1285,6 @@ class UIhandler():
                 temperature = old_temperature
                 distances_dict = old_distances_dict
 
-                print(distances_dict)
-                print(type(distances_dict["1x12:011"]))
                 
                 # flags
                 temperature_flag = False
@@ -1358,6 +1455,8 @@ class UIhandler():
 
 
             if event == "-DUMP-":
+                for measurement in project.drone_measurement_list:
+                    project.calc_displacement_error(measurement)
                 project.dump_pdf()
 
 

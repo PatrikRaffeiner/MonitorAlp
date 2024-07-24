@@ -39,14 +39,18 @@ class Project():
         if init_status:
             measurement_setup_window = self.Gui.make_init_measurement_setup_win()
             imgs_dir, self.dir = self.UiHandler.get_img_and_pjct_dir(measurement_setup_window, self.Gui, self.name)
-            
+            acquisition_date, acquisition_time = self.get_acquisition_date_time(imgs_dir)
+
             marker_input_window = self.Gui.make_marker_input_window(self.target_list)
             temp_target_list = self.UiHandler.get_marker_names(self.Gui, marker_input_window, self.target_list)
             self.target_list.labels = temp_target_list
 
             weather_info_window = self.Gui.make_weather_info_window()
             weather_conditions, temperature = self.UiHandler.get_weather_conditions(weather_info_window)
-            
+            comment_window = self.Gui.make_comment_window("")
+            comment = self.UiHandler.handle_comment_input(comment_window)
+
+
             # reference markers and distance
             # is the same for every measurement
             self.reference_list = ["1x12:01a", "1x12:01b", "1x12:01c"]
@@ -58,10 +62,13 @@ class Project():
         else: # additional measurement
             measurement_setup_window = self.Gui.make_measurement_setup_win()
             imgs_dir = self.UiHandler.get_img_dir(measurement_setup_window, self.Gui)
+            acquisition_date, acquisition_time = self.get_acquisition_date_time(imgs_dir)
 
             weather_info_window = self.Gui.make_weather_info_window()
             weather_conditions, temperature = self.UiHandler.get_weather_conditions(weather_info_window)
-            
+            comment_window = self.Gui.make_comment_window("")
+            comment = self.UiHandler.handle_comment_input(comment_window)
+
             temp_target_list = self.drone_measurement_list[0].target_marker_names
             ref_dist = self.drone_measurement_list[0].ref_distance
 
@@ -70,13 +77,16 @@ class Project():
         new_measurement = None
 
         while new_measurement == None:
-            # wrapper for parallel 
+            # wrapper for parallel processing
             pop_up.perform_long_operation(lambda: DroneMeasurement(self.location,
                                                                    self.reference_list,
                                                                    temp_target_list,
                                                                    self, 
                                                                    temperature,
                                                                    weather_conditions,
+                                                                   acquisition_date, 
+                                                                   acquisition_time,
+                                                                   comment,
                                                                    ref_dist, 
                                                                    imgs_dir,
                                                                    self.accuracy_indication_list),
@@ -97,6 +107,10 @@ class Project():
         manual_measurement_window = self.Gui.make_manual_measurement_input_window(self)
         manual_measurement_dict = self.UiHandler.get_manual_measurement_distances(manual_measurement_window, self, droneMeasurement_dir)
         
+        date_time_acquisition_window = self.Gui.make_date_and_time_acquisition_window()
+        acquisition_date, acquisition_time = self.UiHandler.get_acquisition_date_time(date_time_acquisition_window)
+        comment_window = self.Gui.make_comment_window("")
+        comment = self.UiHandler.handle_comment_input(comment_window)
 
         weather_info_window = self.Gui.make_weather_info_window()
         weather_conditions, temperature = self.UiHandler.get_weather_conditions(weather_info_window)
@@ -109,11 +123,63 @@ class Project():
                                     self, 
                                     temperature,
                                     weather_conditions,
+                                    acquisition_date, 
+                                    acquisition_time,
+                                    comment,
                                     manual_measurement_dict.values())   # distance in meters
         
         manual_measurement_window.close()
         
         return new_manual_measurement
+
+
+
+
+    def get_acquisition_date_time(self, imgs_dir):
+        # find any image in the image path where the aquisition date is extracted from
+        img_list = os.listdir(imgs_dir)
+
+        for element in img_list:
+            if (element.endswith("JPG") or 
+                element.endswith("JPEG") or 
+                element.endswith("jpg") or
+                element.endswith("jpeg") or  
+                element.endswith("PNG") or 
+                element.endswith("png") or 
+                element.endswith("bmp") or
+                element.endswith("BMP")):
+
+                img_dir = imgs_dir + "/" + element
+                break
+        
+        f = open(img_dir, "rb")
+
+        # Return exif tags
+        exif_tags = exifread.process_file(f)
+
+        # Catch if no exif data is available
+        try: 
+            # Get original date when image was taken
+            img_acquisition_str = exif_tags["Image DateTime"].values
+            
+            # Decompose date & time string 
+            date, time = img_acquisition_str.split()
+            yr, mon, day = date.split(":")
+            acquisition_date = day + "-" + mon + "-" + yr
+
+            hr, min, sec = time.split(":")
+            acquisition_time = hr + ":" + min
+
+            return acquisition_date, acquisition_time
+
+
+        except:
+            print("Acquisition date and time could not be obtained from exif data")
+            # get acquisition date and time due to user input
+            date_time_acquisition_window = self.Gui.make_date_and_time_acquisition_window()
+            acquisition_date, acquisition_time = self.UiHandler.get_acquisition_date_time(date_time_acquisition_window)
+
+            return acquisition_date, acquisition_time
 
 
 
@@ -143,6 +209,7 @@ class Project():
             "-defineDistance", origin, refMarkerX, str_ref_distance, 
             "-defineDistance", origin, refMarkerZ, str_ref_distance,
             "-align",
+            "-selectMaximalComponent",
             "-exportGroundControlPoints", measurement.controlPoint_path,
             "-save", save_path,
             "-quit"])
@@ -397,7 +464,23 @@ class Project():
                 displacement = subseq - init
                 subseq_point.set_displacement(displacement)
 
-        
+    
+
+    
+    def calc_displacement_error(self, measurement):
+        # error is calculated based on an emperically obtained function
+        # the function is dependent on the distance between the reference plate and the target
+        def calc_error(dist):
+            fx = 0.139264 + 0.0000218301*dist + 1.52254*10**-6 * dist**2 - 5.666524*10**-10 * dist**3
+            return fx
+
+        for target in measurement.target_points:
+            dist_to_orig = target.distance_from_origin      # in meter
+            displacement_error = calc_error(dist_to_orig*1000)   
+
+            target.set_approx_mean_error(displacement_error/1000)   # in meter
+
+
 
 
     def calc_distance_to_origin(self, subseq_measurement):
@@ -417,7 +500,7 @@ class Project():
         calculated_accuracy_indication_length = math.dist(accuracy_indication_points[0].get_pos(),
                                                           accuracy_indication_points[1].get_pos())
 
-        measurement.accuracy_score = abs(calculated_accuracy_indication_length-self.accuracy_indication_true_length)
+        measurement.accuracy_score = abs(calculated_accuracy_indication_length-self.accuracy_indication_true_length) # in meter
         
 
 
@@ -649,11 +732,11 @@ class Project():
 
             if isinstance(measurement, DroneMeasurement):
                 new_pdf.make_drone_measurement_table(measurement, doc)
-                doc = new_pdf.insert_drone_measuremtnt(measurement, doc)
+                doc = new_pdf.insert_measuremtnt(measurement, doc)
 
             else: # manual measurement
                 new_pdf.make_manual_measurement_table(measurement, doc)
-                doc = new_pdf.insert_manual_measuremtnt(measurement, doc)
+                doc = new_pdf.insert_measuremtnt(measurement, doc)
                     
             
 

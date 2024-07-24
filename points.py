@@ -30,6 +30,10 @@ class DronePoint:
     def set_status(self, status):
         self.status = status
 
+    
+    def set_approx_mean_error(self, err):
+        self.approx_mean_error = err
+
 
 
 

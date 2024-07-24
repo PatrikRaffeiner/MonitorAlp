@@ -19,13 +19,14 @@ class Measurement(ABC):
     @abstractmethod
     def __init__(self, location, ref_marker_names, 
                  target_marker_names, project, temperature, 
-                 weather_conditions):
+                 weather_conditions, acquisition_date, 
+                 acquisition_time, comment):
         
-        self.date = date.today().strftime("%d/%m/%Y")
-        self.time = datetime.now().strftime("%H:%M:%S")
+        self.evaluation_date = date.today().strftime("%d-%m-%Y")
+        self.evaluation_time = datetime.now().strftime("%H:%M")
         self.location = location
         self.ref_marker_names = ref_marker_names
-        self.comment = ""
+        self.comment = comment
 
 
         # reference system names
@@ -36,6 +37,9 @@ class Measurement(ABC):
         self.target_marker_names = target_marker_names
 
         self.target_points = []
+
+        self.acquisition_date = acquisition_date
+        self.acquisition_time = acquisition_time
 
         self.create_name(project)
         self.create_dir(project)
@@ -58,7 +62,7 @@ class Measurement(ABC):
 
     @abstractmethod
     def create_name(self, project):
-        temp_date = self.date.replace("/", "-")
+        temp_date = self.acquisition_date.replace("/", "-")
         new_name = self.location + "_" + temp_date 
         self.name = new_name 
 
@@ -163,16 +167,20 @@ class DroneMeasurement(Measurement):
     # extending the constructor of the parent class (Measurement)
     def __init__(self, location, ref_marker_names, target_marker_names,
                  project, temperature, weather_conditions, 
+                 acquisition_date, acquisition_time, comment,
                  ref_dist, orig_img_path, accuracy_indication_names):
         
         super().__init__(location, ref_marker_names, target_marker_names, 
-                         project, temperature, weather_conditions)
+                         project, temperature, weather_conditions, 
+                         acquisition_date, acquisition_time, comment)
         self.ref_distance = ref_dist    # in meters
         self.copy_imgs(orig_img_path)
 
         self.ref_points = []
         self.accuracy_indication_points = []
         self.accuracy_indication_names = accuracy_indication_names
+                
+        self.num_of_imgs = self.get_number_of_images()
 
 
 
@@ -269,6 +277,7 @@ class DroneMeasurement(Measurement):
     
 
     
+
     def shift_points(self, raw_points, origin_name):
         # function to shift control points of arbitrary coordinate system to origin
         zeroed_points = copy.deepcopy(raw_points)
@@ -398,9 +407,10 @@ class DroneMeasurement(Measurement):
 
     def show_measurement_info(self, overview_window):
         
-        content =  [getText("meas_txt_typeD")[0], getText("meas_txt_typeD")[1], "", # Type
-                    getText("meas_txt_loc"), self.location, "",                     # Location  
-                    getText("meas_txt_d&t"), self.date, self.time, "",              # Time & Date
+        content =  [getText("meas_txt_typeD")[0], getText("meas_txt_typeD")[1], "",     # Type
+                    getText("meas_txt_loc"), self.location, "",                         # Location  
+                    getText("meas_txt_aquD&T"), self.acquisition_date, self.acquisition_time, "",    # Aquisition Time & Date
+                    getText("meas_txt_evalD&T"), self.evaluation_date, self.evaluation_time, "",   # Evaluation Time & Date
                     getText("meas_txt_weather"), getText("meas_txt_" + self.weather_conditions), "",
                     getText("meas_txt_temp"), str(self.temperature)+"°C", "",
                     getText("meas_txt_refM"),                                       
@@ -426,14 +436,27 @@ class DroneMeasurement(Measurement):
 
 
 
+    def get_number_of_images(self):
+        # get the size of the image directory
+        img_list = os.listdir(self.img_path)
+
+        img_count = len(img_list)
+
+        return img_count
+
+
+
 
 
 class ManualMeasurement(Measurement):
     # extending the constructor of the parent class (Measurement)
     def __init__(self, location, ref_marker_names, target_marker_names, 
-                 project, temperature, weather_conditions, target_distances):
+                 project, temperature, weather_conditions,
+                  acquisition_date, acquisition_time, comment, 
+                  target_distances):
         super().__init__(location, ref_marker_names, target_marker_names, 
-                         project, temperature, weather_conditions)
+                         project, temperature, weather_conditions,
+                         acquisition_date, acquisition_time, comment)
 
         #self.distance_dict = target_distances
         for name, distance in zip(target_marker_names, target_distances):
@@ -471,9 +494,10 @@ class ManualMeasurement(Measurement):
 
     def show_measurement_info(self, overview_window):
         
-        content =  [getText("meas_txt_typeM")[0], getText("meas_txt_typeM")[1], "", # Type
-                    getText("meas_txt_loc"), self.location, "",                     # Location  
-                    getText("meas_txt_d&t"), self.date, self.time, "",              # Time & Date
+        content =  [getText("meas_txt_typeM")[0], getText("meas_txt_typeM")[1], "",     # Type
+                    getText("meas_txt_loc"), self.location, "",                         # Location  
+                    getText("meas_txt_aquD&T"), self.acquisition_date, self.acquisition_time, "",    # Aquisition Time & Date
+                    getText("meas_txt_evalD&T"), self.evaluation_date, self.evaluation_time, "",   # Evaluation Time & Date
                     getText("meas_txt_weather"), getText("meas_txt_" + self.weather_conditions), "",
                     getText("meas_txt_temp"), str(self.temperature)+"°C", "",
                     getText("meas_txt_trgtM")]                                      # Target marker                                      

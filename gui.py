@@ -47,7 +47,7 @@ class GUI():
         # column layouts
         project_location_col = [
             [sg.Text(getText("setup_txt_name")),
-            sg.In(size=(25,1), default_text="z.B. Klettersteig Ilmspitz", enable_events= True, key="-LOC-")]] 
+            sg.In(size=(25,1), default_text="z.B. Klettersteig_Ilmspitz_BlockA", enable_events= True, key="-LOC-")]] 
         
 
         project_max_shift_col = [
@@ -119,7 +119,8 @@ class GUI():
  
 
         # create measurement setup window
-        measurement_setup_window = sg.Window(getText("init_win_title"), layout_browse_folder)
+        measurement_setup_window = sg.Window(getText("init_win_title"), 
+                                             layout_browse_folder)
 
         return measurement_setup_window
     
@@ -212,43 +213,6 @@ class GUI():
     
         
 
-
-    def make_licence_browse_win(self):
-
-        input_path = [
-            [sg.Text(getText("lic_txt_file")),
-            sg.In(size=(25,1), enable_events= True, key="-FILE-"),
-            sg.FileBrowse()]] 
-
-        input_PIN = [
-            [sg.Text(getText("lic_txt_pin")),
-            sg.In(size=(25,1), enable_events= True, key="-PIN_INPUT-")]] 
-
-        licence_checkbox = [
-            [sg.Checkbox("", enable_events= True, key="-CHECK-", default=False),
-            sg.Text(getText("setup_cbx_licence")),
-            sg.Button(getText("continue_btn"), disabled=True)]]
-
-
-        # set up licence browse GUI
-        layout_browse_licence = [
-            [sg.Text(getText("lic_text_desc"))],
-            [sg.Column(licence_checkbox)],
-            [sg.HSeparator()],
-            [sg.Column(input_path)],
-            [sg.Button(getText("continue_btn"), disabled=True, key="-CONTINUE-"), sg.Button(getText("cancel_btn"))], 
-            [sg.HSeparator()],
-            [sg.Column(input_PIN)],
-            [sg.Button(getText("lic_txt_pay"),disabled=True, key="-PAY_BTN-"), sg.Button(getText("cancel_btn"))]]
-
-
-        # create licece browse window
-        licence_browse_window = sg.Window(getText("lic_win_title"), layout_browse_licence)
-        
-        return licence_browse_window
-
-
-
     
     def make_marker_input_window(self, target_list):
 
@@ -283,7 +247,28 @@ class GUI():
                     sg.In(size=(25,1), default_text="z.B. 1x12:020", enable_events= True, tooltip=tip_name, key=("-TARGET-", target_num))]], key=("-ROW-", target_num)))]
 
             return marker_input_row    
+
+
+
+
+    def make_date_and_time_acquisition_window(self):
+        # set up date&time input layout
+        acquisition_layout = [
+            [sg.Text(getText("meas_txt_acqu"))],
+            [sg.Text(getText("meas_txt_date")), 
+             sg.In(size=(25,1), enable_events= True, key="-DATE-")],
+             [sg.Text(getText("meas_txt_time")), 
+             sg.In(size=(25,1), enable_events= True, key="-TIME-")],
+             [sg.Button(getText("continue_btn"), key="-CONTINUE-", disabled=True),
+              sg.Button(getText("cancel_btn"), key="-CANCEL-")]] 
         
+
+        # create marker input window
+        time_date_acquisition_window = sg.Window(getText("meas_win_acqu"), acquisition_layout, metadata=0)
+        
+        return time_date_acquisition_window
+
+
 
 
 
@@ -392,16 +377,16 @@ class GUI():
 
 
 
-    def edit_comment(self, current_comment):
+    def make_comment_window(self, current_comment):
         edit_comment_layout = [
-                    [sg.Text(getText("meas_txt_comment"))],
+                    [sg.Text(getText("meas_txt_editCmnt"))],
                     [sg.Multiline(size=(45,5), default_text=current_comment, enable_events= True, key="-COMMENT-", expand_x=True)],
                     [sg.Button(getText("continue_btn"), key="-OK-"), sg.Push(), sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
         
         # create marker input window
-        marker_input_window = sg.Window(getText("mrk_win_title"), edit_comment_layout)
+        comment_input_window = sg.Window(getText("meas_txt_comment"), edit_comment_layout)
         
-        return marker_input_window
+        return comment_input_window
 
 
 
