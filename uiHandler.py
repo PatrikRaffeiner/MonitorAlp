@@ -4,10 +4,13 @@ from copy import deepcopy
 import shutil
 import re
 import subprocess
+import pickle
 
 # local imports
 from gui import *
 from exceptions import*
+
+
 
 
 class UIhandler():
@@ -20,7 +23,6 @@ class UIhandler():
         
         # initiate listener flags with "low"
         loc_flag = False
-        licence_flag = False
         limit_flag = False
 
         # handle possible existing RealityCapture execution directory 
@@ -82,7 +84,7 @@ class UIhandler():
                 name = location
 
                 # set project members from UI
-                return location, RC_path, licence_flag, name, limit
+                return location, RC_path, name, limit
 
 
 
@@ -691,7 +693,12 @@ class UIhandler():
             if event == sg.WIN_CLOSED:
                 load_window.close()
                 return False
-    
+            
+            if event == "-IMPORT-":
+                self.handle_project_import(project_list, master_obj)
+                new_project_names = project_list.get_names()
+                load_window["-PROJECT_SELECT-"].update(new_project_names)
+
                     
             if event == "-PROJECT_SELECT-":
                 # gets the selected element from the recent project list
@@ -750,7 +757,68 @@ class UIhandler():
                 load_window.close()
                 return selected_project
 
-                
+
+
+
+    def handle_project_import(self, project_list, master_obj):
+        gui = GUI()
+        import_browse_win = gui.make_browse_import_project()
+        import_btn = import_browse_win["-IMPORT-"]
+
+        while True:
+            event, values = import_browse_win.read()
+         
+            # End if window is closed
+            if event == sg.WIN_CLOSED:
+                import_browse_win.close()
+                return False
+            
+            if event == "-BROWSE_INPUT-":
+                input_dir = values["-BROWSE_INPUT-"]
+
+                from project import Project
+                from measurement import Measurement
+
+                try: 
+                    with open(input_dir, "rb") as file:
+                        loaded_project = pickle.load(file) 
+
+                        if isinstance(loaded_project, Project):
+                            import_btn.update(disabled=False)
+
+                            # in case measurement file was selected before
+                            import_browse_win["-BROWSE_INPUT-"].update(background_color="white")
+
+                        elif isinstance(loaded_project, Measurement):
+                            loc = import_browse_win.CurrentLocation()
+                            import_browse_win["-BROWSE_INPUT-"].update(background_color="red")
+                            GUI.non_blocking_popup("import_warn_meas", "DarkRed1", loc)
+                            
+                            # in case project file was selected before
+                            import_btn.update(disabled=True)
+
+
+                        else: 
+                            loc = import_browse_win.CurrentLocation()
+                            import_browse_win["-BROWSE_INPUT-"].update(background_color="red")
+                            GUI.non_blocking_popup("import_warn_wrongPjct", "DarkRed1", loc)
+
+                            # in case project file was selected before
+                            import_btn.update(disabled=True)
+
+
+                except Exception as ex: 
+                    print(ex)
+
+            
+            if event == "-IMPORT-":
+                project_list.append(loaded_project)
+                import_browse_win.close()
+                master_obj.save()
+                break
+
+
+
 
 
     def handle_measurement_overview(self, overview_window, select_lst, 
@@ -841,16 +909,6 @@ class UIhandler():
                 if selected_measurement == project.manual_measurement_list[0]:
                     menu_elements[2][1][-1] = "!" + menu_elements[2][1][-1]
                     
-                    '''# set tooltips of drone and manual measurement delete button
-                    overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_nodel") # "cannot delete init measurement"
-                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_del")  # "Please select the measurement to delete"
-
-                
-                else:                   
-                    # set tooltips of drone and manual measurement delete button
-                    overview_window["-DEL_MANUAL-"].TooltipObject.text = getText("meas_tip_delInfo")  # "Removes selected measurement irreversibly"
-                    overview_window["-DEL_DRONE-"].TooltipObject.text = getText("meas_tip_del")     # "Please select the measurement to delete"  
-                '''
                 # update layout to enforce recent changes
                 overview_window["-MENU-"].update(menu_definition = menu_elements)
 
@@ -883,7 +941,7 @@ class UIhandler():
 
                 project.calc_displacement(drone_measurement)
                 project.calc_distance_to_origin(drone_measurement)
-                project.calc_accuracy_indicator(drone_measurement)
+                project.calc_accuracy_score(drone_measurement)
                 project.calc_displacement_error(drone_measurement)
                 
                 drone_measurement.check_limits()                

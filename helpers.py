@@ -212,6 +212,11 @@ class TextReadOut(ABC):
             "pdf_txt_titleD" : ["Drone measurement <br/> ","Drohnen-Messung <br/> "],
             "pdf_txt_titleM" : ["Manual measurement <br/> ","Manuelle Messung <br/> "],
             "pdf_txt_title" : ["Records","Aufzeichnungen"],
+            "import_txt_title" : ["Import Project","Projekt Importieren"],
+            "import_txt_instr" : ["Please browse and select the project file (.pkl) you wish to import","Bitte suchen und wählen Sie die Projekt-Datei (.pkl) aus die importiert werden soll"],
+            "import" : ["Import","Importieren"],
+            "import_warn_meas" : ["The selected file is a measurement file. Please select a project file","Die ausgewählte Datei ist eine Messung. Bitte wählen Sie eine Projekt-Datei aus"],
+            "import_warn_wrongPjct" : ["The selected file is not a project file. Please select a project file","Die ausgewählte Datei ist keine Projekt-Datei. Bitte wählen Sie eine Projekt-Datei aus"],
             }
 
 

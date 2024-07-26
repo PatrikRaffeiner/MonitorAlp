@@ -271,7 +271,6 @@ class GUI():
 
 
 
-
     def make_project_overview_window(self, drone_measurements, manual_measurements, project):
 
         drone_measurement_names = [drone_measurement.name for drone_measurement in drone_measurements]
@@ -355,7 +354,7 @@ class GUI():
 
 
 
-    def make_project_list_window(self, project_names):      
+    def make_project_load_window(self, project_names):      
 
         recent_projects = sg.Listbox(project_names, size=(40,10), font=("Arial Bold", 14), 
                                      expand_y=True, expand_x=True, enable_events=True, 
@@ -364,6 +363,8 @@ class GUI():
         layout = [[sg.Text(getText("pjlist_txt_pjcts"))],
                   [recent_projects],
                   [sg.Button(getText("pjlist_btn_load"), key="-LOAD-", disabled=True), 
+                   sg.Push(),
+                   sg.Button("Import Project", key="-IMPORT-"), 
                    sg.Push(), 
                    sg.Button(getText("pjlist_btn_del"), button_color=("white","firebrick3"), disabled=True, key="-DEL-")]]
                 
@@ -373,6 +374,23 @@ class GUI():
         load_win["-PROJECT_SELECT-"].bind('<Double-Button-1>' , "+-double click-")
 
         return load_win, recent_projects
+
+
+
+
+    def make_browse_import_project(self):
+        import_project_path = [
+            [sg.Text(getText("import_txt_instr"))],
+            [sg.In(size=(25,1), enable_events= True, key="-BROWSE_INPUT-"),
+            sg.FileBrowse(file_types=(("Pickle Files", "*.pkl"),))],
+            [sg.Button(getText("import"), key="-IMPORT-", disabled=True), sg.Push(), sg.Button(getText("cancel_btn"), key="-CANCEL-")]]
+        
+        browse_project_import_window = sg.Window(getText("import_txt_title"),
+                                                 [import_project_path])
+        
+        return browse_project_import_window
+
+                                
 
 
 
@@ -539,8 +557,6 @@ class GUI():
                                                  buttons_layout])
         
         return drone_measurement_property_window
-
-
 
 
 

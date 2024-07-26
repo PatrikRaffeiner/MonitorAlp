@@ -22,34 +22,37 @@ class Measurement(ABC):
                  weather_conditions, acquisition_date, 
                  acquisition_time, comment):
         
-        self.evaluation_date = date.today().strftime("%d-%m-%Y")
-        self.evaluation_time = datetime.now().strftime("%H:%M")
-        self.location = location
-        self.ref_marker_names = ref_marker_names
-        self.comment = comment
+        self.dir = None                                                 # directory of measurement folder (string)
+        self.name = None                                                # measurement name (string)
+        self.status = ""                                                # status of acceptable displacement (string)
+
+        self.evaluation_date = date.today().strftime("%d-%m-%Y")        # current date, processing time of imgs/measurement generation (string)
+        self.evaluation_time = datetime.now().strftime("%H:%M")         # current time, processing time of imgs/measurement generationv (string)
+        self.location = location                                        # location measurement, where imgs are taken, might be None or "-" (string) 
+        self.ref_marker_names = ref_marker_names                        # marker names on reference plate (list of strings) 
+        self.comment = comment                                          # comment (string)
 
 
         # reference system names
-        self.ref_origin_name = self.ref_marker_names[0]
-        self.ref_X_name = self.ref_marker_names[1]
-        self.ref_Z_name =  self.ref_marker_names[2]
+        self.ref_origin_name = self.ref_marker_names[0]                 # name of origin of reference plate (string)
+        self.ref_X_name = self.ref_marker_names[1]                      # name of x-axis marker of reference plate (string)
+        self.ref_Z_name =  self.ref_marker_names[2]                     # name of z-axis marker of reference plate (string)
 
-        self.target_marker_names = target_marker_names
+        self.target_marker_names = target_marker_names                  # names of target markers (list of strings)
 
-        self.target_points = []
+        self.target_points = []                                         # list of target points (list of objects)
 
-        self.acquisition_date = acquisition_date
-        self.acquisition_time = acquisition_time
+        self.acquisition_date = acquisition_date                        # date of image acquisition/manual measurement completion (string)
+        self.acquisition_time = acquisition_time                        # time of image acquisition/manual measurement completion (string)
 
         self.create_name(project)
         self.create_dir(project)
 
         self.UiHandler = UIhandler()
 
-        self.limit = project.limit
-        self.temperature = temperature
-        self.weather_conditions = weather_conditions
-
+        self.limit = project.limit                                      # permitted displacement limit, might differ from project.limit (float)
+        self.temperature = temperature                                  # temperature at measurement execution (int)
+        self.weather_conditions = weather_conditions                    # weather conditions at measurement execution (string)
 
                 
 
@@ -162,7 +165,6 @@ class Measurement(ABC):
 
 
 
-
 class DroneMeasurement(Measurement):
     # extending the constructor of the parent class (Measurement)
     def __init__(self, location, ref_marker_names, target_marker_names,
@@ -173,17 +175,22 @@ class DroneMeasurement(Measurement):
         super().__init__(location, ref_marker_names, target_marker_names, 
                          project, temperature, weather_conditions, 
                          acquisition_date, acquisition_time, comment)
-        self.ref_distance = ref_dist    # in meters
-        self.copy_imgs(orig_img_path)
+        self.img_path = None                                        # path to measurement images (string)
+        self.points = None                                          # list of all points (reference, target, accuracy indicators) (list of objects)
+        self.origin = None                                          # origin of reference plate (object)
+        self.controlPoint_path = None                               # directory of controlPoint.csv file (string)
+        self.accuracy_score = None                                  # score to rate the measurement accuracy (float)
+        
+        self.ref_distance = ref_dist                                # in meters, true length on reference plate (float)
+        self.copy_imgs(orig_img_path)                               
 
-        self.ref_points = []
-        self.accuracy_indication_points = []
-        self.accuracy_indication_names = accuracy_indication_names
+        self.ref_points = []                                        
+        self.accuracy_indication_points = []                        # list of reference points (list of objects)
+        self.accuracy_indication_names = accuracy_indication_names  # list of accuracy marker names (list of strings) 
                 
         self.num_of_imgs = self.get_number_of_images()
 
-
-
+                                       
 
     def create_dir(self, project):
         super().create_dir(project)
@@ -444,6 +451,17 @@ class DroneMeasurement(Measurement):
 
         return img_count
 
+
+
+
+    def set_control_point_path(self, path):
+        self.controlPoint_path = path
+
+
+
+
+    def set_accuracy_score(self, score):
+        self.accuracy_score = score
 
 
 

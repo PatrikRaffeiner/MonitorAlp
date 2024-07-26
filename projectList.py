@@ -8,9 +8,6 @@ from uiHandler import *
 
 class ProjectList(list):
 
-    permanent_file = "ProjectList.pkl"
-
-
     def get_names(self):
         name_list = []
         for element in self:
@@ -69,7 +66,7 @@ class ProjectList(list):
             return False
 
         else: 
-            load_window, recent_projects = gui.make_project_list_window(project_names)
+            load_window, recent_projects = gui.make_project_load_window(project_names)
             selected_project = uiHandler.select_from_project_list(load_window, recent_projects, self, master_obj)
 
             return selected_project
@@ -78,4 +75,3 @@ class ProjectList(list):
 
     def remove_project(self, project):
         self.remove(project)
-

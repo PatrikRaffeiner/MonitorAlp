@@ -398,6 +398,10 @@ def draw_status_label(canvas, doc):
          label_color = colors.yellow
       elif status == "Achtung":
          label_color = colors.red
+      elif status == "":
+         label_color = colors.white
+      elif status == None: 
+         label_color = colors.white
 
    except: # no status if initial measurmenet
       status = ""

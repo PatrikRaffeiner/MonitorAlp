@@ -12,13 +12,26 @@ from uiHandler import *
         
 class Project():
     def __init__(self):
-        self.Gui = GUI()
-        self.UiHandler = UIhandler()
-        self.all_measurement_list = []
-        self.drone_measurement_list = []
-        self.manual_measurement_list = []
-        self.target_list = self.TargetList()
+        self.location = None                        # project location (string) 
+        self.name = None                            # project name (string)
+        self.limit = None                           # rock displacement limit (float)
+        self.dir = None                             # project directory (string) 
+        self.reference_list = None                  # contains reference marker names (strings)
+        self.accuracy_indication_list = None        # contains accuracy indicator marker names (strings)
+        self.accuracy_indication_true_length = None # true distance between markers used to calculate accuracy indicator (float)
+        self.GPS_available = None                   # flag showing if location is tracked in images (boolean)
+        self.latitude = None                        # GPS latitude of project location, if available (float)
+        self.longitude = None                       # GPS longitude of project location, if available (float)
+        self.altitude = None                        # GPS altitude of project location, if available (float)
+        self.pdf = None                             # report of measurements in pdf format (object) 
 
+        self.Gui = GUI()                            # handles the creation of GUIs 
+        self.UiHandler = UIhandler()                # handles User Inputs
+        self.all_measurement_list = []              # contains all measuremets (manual and drone)
+        self.drone_measurement_list = []            # containes drone measurements objects only (object)
+        self.manual_measurement_list = []           # containes manual measurements objects only (object)
+        self.target_list = self.TargetList()        # contains drone targets (list of objects)
+        
 
 
 
@@ -28,7 +41,7 @@ class Project():
         project_setup_window = self.Gui.make_project_setup_win(master_obj.RC_dir)
 
         # set project members from UI
-        self.location, RC_path, self.permanent_licence_active, self.name, self.limit = self.UiHandler.handle_project_setup(project_setup_window, master_obj)
+        self.location, RC_path, self.name, self.limit = self.UiHandler.handle_project_setup(project_setup_window, master_obj)
         master_obj.set_RC_dir(RC_path)
 
 
@@ -186,7 +199,7 @@ class Project():
 
     def RC_registration_and_export_points(self, measurement, RC_dir):
         # path to save control points (measurement points)
-        measurement.controlPoint_path = measurement.dir + "/controlPoints.csv"
+        measurement.set_control_point_path(measurement.dir + "/controlPoints.csv")
 
         # definition of reference (marker) system
         origin = measurement.ref_origin_name
@@ -494,14 +507,15 @@ class Project():
     
 
 
-    def calc_accuracy_indicator(self, measurement):
+    def calc_accuracy_score(self, measurement):
         accuracy_indication_points = measurement.accuracy_indication_points
         
         calculated_accuracy_indication_length = math.dist(accuracy_indication_points[0].get_pos(),
                                                           accuracy_indication_points[1].get_pos())
 
-        measurement.accuracy_score = abs(calculated_accuracy_indication_length-self.accuracy_indication_true_length) # in meter
+        accuracy_score = abs(calculated_accuracy_indication_length-self.accuracy_indication_true_length) # in meter
         
+        measurement.set_accuracy_score(accuracy_score) 
 
 
 
@@ -835,11 +849,13 @@ class Project():
     class TargetList(list):
         def __init__(self):
             char = "A"
-            self.init_char = ord(char [0])
+            self.init_char = ord(char [0])              # unicode of caracter used to alphabetically iterate: A, B, C, ... (integer)
+            self.labels = None                          # list, containing the names of the targets (list of strings)
+
             
             # initialize target list with first element
             #             visible, label
-            self.attr = [[True,   None]]
+            self.attr = [[True,   None]]                # list of attributes used during the target list initialization
 
         
         def make_current_marker_character(self, target_num):

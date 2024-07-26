@@ -68,7 +68,7 @@ while True:
             new_project.manual_measurement_list.append(init_manual_measurement)
 
             new_project.calc_distance_to_origin(init_drone_measurement)
-            new_project.calc_accuracy_indicator(init_drone_measurement)
+            new_project.calc_accuracy_score(init_drone_measurement)
             new_project.calc_displacement_error(init_drone_measurement)
 
             project_list.append(new_project)
