@@ -1,0 +1,60 @@
+Anweisungen zur Installation von RealityCapture und MonitorAlp
+
+MonitorAlp verwendet und bedient die Software RealityCapture.
+Zur Installation von MonitorAlp muss deshalb auch RealityCapture Installiert 
+werden.
+
+1. Download von RealityCapture https://www.capturingreality.com/DownloadNow
+
+RealityCapture ist eine frei Verfügbare Software für alle Kunden die jährlich 
+unter 1 mio. USD generieren. https://www.capturingreality.com/pricing-changes
+
+1.1 Download Epic Games Launcher 
+Die Installation erfolgt über den Epic Games Launcher. 
+Diesen einfach herunterladen, ausführen und einen Account erstellen. 
+Im Epic Games Launcher befindet sich in der Linken Spalte das Register "Unreal 
+Engine". 
+
+1.2 Installation von RealityCapture
+Im oberen Register von Unreal Engine befindet sich das Verzeichnis "RealityCapture".
+Hier auf Installieren klicken und den Anweisungen folgen. 
+
+!Wichtig! Der Installationspfad von ReaityCapture wird beim Setup von MonitorAlp
+noch benötigt.
+
+!Wichtig! Die System-Voraussetzungen zur Verwendung von RealityCapture besagen, 
+dass eine NVIDIA-Grafikkarte mit CUDA 3.0 oder höher benötigt wird. Für die 
+Anwendung von MonitorAlp wird dies nicht benötigt. Es muss keine spezielle 
+Grafikkarte verbaut sein.
+
+
+2. Download von MonitorAlp
+MonitorAlp kann über https://github.com/PatrikRaffeiner/MonitorAlp/tags 
+heruntergeladen werden.
+Unter dem Link kann eine Version (im Normalfall die letzte) ausgewählt werden. 
+Dann die "MonitorAlp.zip" herunterladen. In ein Verzeichnis der Wahl verschieben
+und die Datei entpacken. 
+Im Ordner befindet sich die Datei "MonitorAlp.exe" diese kann für die Verwendung
+ausgeführt werden. 
+
+3. Controlpoints überschreiben
+Für die korrekte Ausführung von MonitorAlp muss die Datei "controlpoints.xml" 
+im Installationspfad von RealityCapture mit der gleichnamigen Datei aus dem
+entpackten Ordner überschriebn werden. Dazu wird die Datei aus dem entpackten
+Ordner (MonitorAlp) in den Installations-Ordner von Reality Capture verschobenen
+und überschrieben. 
+
+4. Georeferencing aufheben
+Für die korrekte Ausführung von MonitorAlp muss die Verwendung von 
+Geo-Referenzierung aufgehoben werden. 
+Dafür muss RealityCapture gestartet werden und im Register auf "ALIGNMENT" 
+gewechselt werden.
+Durch klicken auf "Settigns" im Raster "Registration" öffnet sich links eine 
+neue Spalte "Alignment Settings"
+Hier muss unter "Camera prior settings" der Punkt "Use camera priors for
+georeferencing" deaktiviert werden (auf NO stellen)
+
+
+5. Verwendung von MonitorAlp
+Die Software ist nun bereit und kann durch ausführen der "MonitorAlp.exe" 
+gestartet werden

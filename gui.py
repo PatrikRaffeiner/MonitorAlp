@@ -100,15 +100,20 @@ class GUI():
         project_tooltip = getText("init_tip_proj")
 
 
+        project_path = [
+            [sg.Text(getText("setup_txt_pjct"))],
+            [sg.Text(getText("init_txt_proj")),
+            sg.In(size=(25,1), enable_events= True, key="-PRJFOLDER-", tooltip=project_tooltip),
+            sg.FolderBrowse()],
+            [sg.HSeparator()], 
+            [sg.HSeparator()]] 
+
         image_path = [
+            [sg.Text(getText("setup_txt_img"))],
             [sg.Text(getText("init_txt_img")),
             sg.In(size=(25,1), enable_events= True, key="-IMGFOLDER-", tooltip=imgs_tooltip),
             sg.FolderBrowse()]] 
         
-        project_path = [
-            [sg.Text(getText("init_txt_proj")),
-            sg.In(size=(25,1), enable_events= True, key="-PRJFOLDER-", tooltip=project_tooltip),
-            sg.FolderBrowse()]] 
 
         # create layout for measurement setup GUI
         layout_browse_folder = [
